@@ -1,7 +1,14 @@
 
 import { Button } from "./ui/button";
+import { useNavigate } from "react-router-dom";
 
 const HeroSection = () => {
+  const navigate = useNavigate();
+
+  const handleStartCollaborating = () => {
+    navigate('/auth');
+  };
+
   return (
     <section className="bg-white py-16 px-4">
       <div className="max-w-7xl mx-auto">
@@ -18,7 +25,10 @@ const HeroSection = () => {
                 Join the world's largest network of researchers, share your work, find collaborators, and accelerate scientific discovery together.
               </p>
             </div>
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg rounded-md transition-colors">
+            <Button 
+              onClick={handleStartCollaborating}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg rounded-md transition-colors"
+            >
               Start Collaborating
             </Button>
           </div>
