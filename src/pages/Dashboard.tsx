@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -128,6 +127,11 @@ const Dashboard = () => {
                     ? 'bg-blue-600 text-white' 
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}
+                onClick={() => {
+                  if (item.label === 'Discover Collaborators') {
+                    navigate('/discover-collaborators');
+                  }
+                }}
               >
                 <item.icon className="w-5 h-5" />
                 <span className="text-sm">{item.label}</span>
