@@ -28,7 +28,8 @@ import {
   MicOff,
   Expand,
   Monitor,
-  MicIcon
+  MicIcon,
+  Minimize2
 } from 'lucide-react';
 
 const Chat = () => {
@@ -44,6 +45,7 @@ const Chat = () => {
 
   const handlePhoneClick = () => {
     setShowCallingModal(true);
+    setShowExpandedCalling(false);
   };
 
   const handleEndCall = () => {
@@ -53,6 +55,10 @@ const Chat = () => {
 
   const handleExpandCall = () => {
     setShowExpandedCalling(true);
+  };
+
+  const handleMinimizeCall = () => {
+    setShowExpandedCalling(false);
   };
 
   const home = [
@@ -349,8 +355,8 @@ const Chat = () => {
               ))}
             </div>
 
-            {/* Calling Card */}
-            {showCallingModal && (
+            {/* Small Calling Card - Only show when not expanded */}
+            {showCallingModal && !showExpandedCalling && (
               <div className="p-4">
                 <div className="bg-gray-100 rounded-2xl p-6 relative">
                   {/* Header with Calling text and expand icon */}
@@ -503,14 +509,14 @@ const Chat = () => {
         <Dialog open={showExpandedCalling} onOpenChange={setShowExpandedCalling}>
           <DialogContent className="max-w-2xl">
             <div className="bg-gray-100 rounded-2xl p-8">
-              {/* Header with Calling text and expand icon */}
+              {/* Header with Calling text and minimize icon */}
               <div className="flex items-center justify-between mb-8">
                 <div className="text-2xl font-medium text-gray-800">Calling...</div>
                 <button 
-                  onClick={() => setShowExpandedCalling(false)}
+                  onClick={handleMinimizeCall}
                   className="text-gray-600 hover:text-gray-800"
                 >
-                  <Expand className="w-6 h-6" />
+                  <Minimize2 className="w-6 h-6" />
                 </button>
               </div>
               
