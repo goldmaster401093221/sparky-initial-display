@@ -6,6 +6,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Calendar } from '@/components/ui/calendar';
+import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { 
   Home, 
   Users, 
@@ -26,15 +35,19 @@ import {
 const Collaboration = () => {
   const [activeTab, setActiveTab] = useState('In Progress');
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const [sidebarOpen, setSidebarOpen] = useState(false); // Add sidebar state
+  const [showEndCollaborationModal, setShowEndCollaborationModal] = useState(false);
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
   };
 
-  const sidebarItems = [
-    { icon: Home, label: 'Home', active: false },
+  const handleEndCollaboration = () => {
+    setShowEndCollaborationModal(false);
+    // Add logic to end collaboration here
+  };
+
+  const home = [
     { icon: Users, label: 'Dashboard', active: false },
     { icon: Users, label: 'Discover Collaborators', active: false },
     { icon: Bookmark, label: 'Saved Collaborators', active: false },
@@ -103,29 +116,335 @@ const Collaboration = () => {
     }
   ];
 
+  const renderTabContent = () => {
+    if (activeTab === 'Upcoming') {
+      return (
+        <div className="grid grid-cols-6 gap-4">
+          {/* Main Collaboration Content */}
+          <div className="col-span-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold">Collaboration Status</h3>
+                    <Badge className="bg-green-100 text-green-800 border-green-200 px-3 py-1">
+                      Upcoming
+                    </Badge>
+                  </div>
+                  
+                  <div className="flex items-center space-x-4 text-sm text-gray-600 mb-6">
+                    <span>From 2025-06-04</span>
+                    <span>To 2025-06-25</span>
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <h4 className="font-medium mb-4">2 Collaborators</h4>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-start space-x-3">
+                      <Avatar className="w-12 h-12">
+                        <img 
+                          src="/lovable-uploads/avatar2.jpg" 
+                          className="max-w-full h-auto rounded-lg shadow-lg"
+                        />
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="font-medium">Bashair Mussa (me)</div>
+                        <div className="text-sm text-gray-500">Researcher Role</div>
+                        <div className="flex space-x-2 mt-2">
+                          <Badge variant="outline" className="text-xs">Idea</Badge>
+                          <Badge variant="outline" className="text-xs">Proposal</Badge>
+                          <Badge variant="outline" className="text-xs">Grant Application</Badge>
+                        </div>
+                      </div>
+                      <button className="text-blue-600 hover:bg-blue-50 p-1 rounded">
+                        <MessageCircle className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-start space-x-3">
+                      <Avatar className="w-12 h-12">
+                        <img 
+                          src="/lovable-uploads/avatar1.jpg" 
+                          className="max-w-full h-auto rounded-lg shadow-lg"
+                        />
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="font-medium">Anna Krylova</div>
+                        <div className="text-sm text-gray-500">Researcher Role</div>
+                        <div className="flex space-x-2 mt-2">
+                          <Badge variant="outline" className="text-xs">Equipment</Badge>
+                          <Badge variant="outline" className="text-xs">Experiment</Badge>
+                        </div>
+                      </div>
+                      <button className="text-blue-600 hover:bg-blue-50 p-1 rounded">
+                        <MessageCircle className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <Button variant="outline" className="w-full mt-4">
+                    Invite More
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeTab === 'Requests') {
+      return (
+        <div className="grid grid-cols-6 gap-4">
+          {/* Main Collaboration Content */}
+          <div className="col-span-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold">Collaboration Status</h3>
+                    <Badge className="bg-blue-100 text-blue-800 border-blue-200 px-3 py-1">
+                      Incoming Request
+                    </Badge>
+                  </div>
+                  
+                  <div className="flex items-center space-x-4 text-sm text-gray-600 mb-6">
+                    <span>From 2025-06-04</span>
+                    <span>To 2025-06-25</span>
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <h4 className="font-medium mb-4">Collaborator</h4>
+                  
+                  <div className="flex items-start space-x-3 mb-6">
+                    <Avatar className="w-12 h-12">
+                      <img 
+                        src="/lovable-uploads/avatar1.jpg" 
+                        className="max-w-full h-auto rounded-lg shadow-lg"
+                      />
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="font-medium">Anna Krylova</div>
+                      <div className="text-sm text-gray-500">Researcher Role</div>
+                      <div className="flex space-x-2 mt-2">
+                        <Badge variant="outline" className="text-xs">Equipment</Badge>
+                        <Badge variant="outline" className="text-xs">Experiment</Badge>
+                      </div>
+                    </div>
+                    <button className="text-blue-600 hover:bg-blue-50 p-1 rounded">
+                      <MessageCircle className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="mb-6">
+                    <h4 className="font-medium mb-4">Terms of Collaboration</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox id="term1" defaultChecked />
+                        <label htmlFor="term1" className="text-sm">Term of collaboration</label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox id="term2" />
+                        <label htmlFor="term2" className="text-sm">Term of collaboration</label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox id="term3" defaultChecked />
+                        <label htmlFor="term3" className="text-sm">Term of collaboration</label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex space-x-4">
+                    <Button className="bg-blue-600 hover:bg-blue-700">
+                      Accept Request
+                    </Button>
+                    <Button variant="outline" className="text-blue-600 border-blue-600">
+                      Reject Request
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      );
+    }
+
+    // Default "In Progress" content
+    return (
+      <div className="grid grid-cols-6 gap-4">
+        {/* Main Collaboration Content */}
+        <div className="col-span-2 ">
+          <Card>
+            <CardContent className="p-6">
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Collaboration Status</h3>
+                  <Badge className="bg-green-100 text-green-800 border-green-200 px-3 py-1">
+                    In Progress
+                  </Badge>
+                </div>
+                
+                <div className="flex items-center space-x-4 text-sm text-gray-600 mb-6">
+                  <span>From 2025-06-04</span>
+                  <span>To 2025-06-25</span>
+                </div>
+              </div>
+
+              {/* Calendar */}
+              <div className="mb-6">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={setDate}
+                  className="rounded-md  flex"
+                />
+              </div>
+
+              {/* Today's Activity */}
+              <div className="mb-6">
+                <h4 className="font-medium mb-4">Jun 18th (Today) Activity</h4>
+                <div className="space-y-3">
+                  {activities.map((activity, index) => (
+                    <div key={index} className="flex items-center space-x-3">
+                      <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
+                        <File className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <span className="text-sm flex-1">
+                        <span className="font-medium">{activity.user}</span> {activity.action}
+                      </span>
+                      <button className="text-blue-600 text-sm hover:underline">
+                        {activity.link}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-between">
+                <Button variant="outline" className="text-blue-600 border-blue-600" onClick={() => navigate('/data-center')}>
+                  Go to Data Center
+                </Button>
+                <Button variant="outline" className="text-blue-600 border-blue-600" onClick={() => navigate('/chat')}>
+                  Go to Chat Room
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Sidebar */}
+        <div className="space-y-6 col-span-2 col-start-4">
+          {/* Collaborators */}
+          <Card className="">
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold mb-4">2 Collaborators</h3>
+              
+              <div className="space-y-4">
+                <div className="flex items-start space-x-3">
+                  <Avatar className="w-12 h-12">
+                    <img 
+                      src="/lovable-uploads/avatar2.jpg" 
+                      className="max-w-full h-auto rounded-lg shadow-lg"
+                    />
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="font-medium">Bashair Mussa (me)</div>
+                    <div className="text-sm text-gray-500">Researcher Role</div>
+                    <div className="flex space-x-2 mt-2">
+                      <Badge variant="outline" className="text-xs">Idea</Badge>
+                      <Badge variant="outline" className="text-xs">Proposal</Badge>
+                      <Badge variant="outline" className="text-xs">Grant Application</Badge>
+                    </div>
+                  </div>
+                  <button className="text-blue-600 hover:bg-blue-50 p-1 rounded">
+                    <MessageCircle className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="flex items-start space-x-3">
+                  <Avatar className="w-12 h-12">
+                    <img 
+                      src="/lovable-uploads/avatar1.jpg" 
+                      className="max-w-full h-auto rounded-lg shadow-lg"
+                    />
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="font-medium">Anna Krylova</div>
+                    <div className="text-sm text-gray-500">Researcher Role</div>
+                    <div className="flex space-x-2 mt-2">
+                      <Badge variant="outline" className="text-xs">Equipment</Badge>
+                      <Badge variant="outline" className="text-xs">Experiment</Badge>
+                    </div>
+                  </div>
+                  <button className="text-blue-600 hover:bg-blue-50 p-1 rounded">
+                    <MessageCircle className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <Button 
+                variant="outline" 
+                className="w-full mt-4"
+                onClick={() => setShowEndCollaborationModal(true)}
+              >
+                End Collaboration
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Supporting Services */}
+          <Card className="">
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Supporting Services</h3>
+              
+              <div className="space-y-3">
+                {supportingServicesData.map((service, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
+                        <service.icon className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <span className="text-sm">{service.name}</span>
+                    </div>
+                    <button className="text-blue-600 text-sm hover:underline">
+                      {service.link}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar (drawer on mobile) */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black bg-opacity-30 md:hidden" onClick={() => setSidebarOpen(false)}></div>
-      )}
-      <div
-        className={
-          `fixed z-50 inset-y-0 left-0 w-64 bg-white border-r border-gray-200 flex flex-col transform transition-transform duration-200 md:static md:translate-x-0 md:flex ` +
-          (sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0')
-        }
-      >
+      {/* Sidebar */}
+      <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
         {/* Logo */}
-        <div className="p-6 border-b border-gray-200 flex items-center space-x-2">
-          <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
-            <span className="text-white font-bold text-sm">A</span>
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
+              <span className="text-white font-bold text-sm">A</span>
+            </div>
+            <span className="font-semibold text-lg">AIRCollab</span>
           </div>
-          <span className="font-semibold text-lg">AIRCollab</span>
         </div>
+
         {/* Navigation */}
-        <div className="flex-1 p-4 space-y-6 overflow-y-auto">
+        <div className="flex-1 p-4 space-y-6">
           <div>
-            {sidebarItems.map((item, index) => (
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 px-3">
+              Home
+            </div>
+            {home.map((item, index) => (
               <div
                 key={index}
                 className={`flex items-center space-x-3 px-3 py-2 rounded-md cursor-pointer ${
@@ -234,35 +553,29 @@ const Collaboration = () => {
           </div>
         </div>
       </div>
+
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col bg-white">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-4 py-4 flex items-center justify-between md:px-6">
-          <div className="flex items-center">
-            {/* Hamburger for mobile */}
-            <button
-              className="md:hidden mr-3 p-2 rounded hover:bg-gray-100 focus:outline-none"
-              onClick={() => setSidebarOpen(true)}
-              aria-label="Open sidebar"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-            </button>
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold text-gray-900">Collaboration</h1>
+            <Button onClick={handleSignOut} variant="outline" size="sm">
+              Sign Out
+            </Button>
           </div>
-          <Button onClick={handleSignOut} variant="outline" size="sm">
-            Sign Out
-          </Button>
         </div>
+
         {/* Content */}
-        <div className="flex-1 p-2 sm:p-4 md:p-6 overflow-x-auto">
+        <div className="flex-1 p-6">
           {/* Filter Tabs */}
-          <div className="mb-4 sm:mb-6">
-            <div className="flex flex-wrap space-x-0 sm:space-x-8 border-b border-gray-200">
+          <div className="mb-6">
+            <div className="flex space-x-8 border-b border-gray-200">
               {['In Progress', 'Upcoming', 'Requests', 'History'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`pb-2 sm:pb-4 text-sm font-medium w-1/2 sm:w-auto ${
+                  className={`pb-4 text-sm font-medium ${
                     activeTab === tab
                       ? 'bg-white border-b-2 border-gray-900 text-gray-900'
                       : 'text-gray-500 hover:text-gray-700'
@@ -273,162 +586,37 @@ const Collaboration = () => {
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-6 gap-4">
-            {/* Main Collaboration Content */}
-            <div className="lg:col-span-2">
-              <Card>
-                <CardContent className="p-4 sm:p-6">
-                  <div className="mb-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold">Collaboration Status</h3>
-                      <Badge className="bg-green-100 text-green-800 border-green-200 px-3 py-1">
-                        In Progress
-                      </Badge>
-                    </div>
-                    
-                    <div className="flex items-center space-x-4 text-sm text-gray-600 mb-6">
-                      <span>From 2025-06-04</span>
-                      <span>To 2025-06-25</span>
-                    </div>
-                  </div>
 
-                  {/* Calendar */}
-                  <div className="mb-6">
-                    {/* <div className="flex items-center justify-between mb-4">
-                      <button className="p-1 hover:bg-gray-100 rounded">
-                        <ChevronLeft className="w-4 h-4" />
-                      </button>
-                      <span className="font-medium">2024 June</span>
-                      <button className="p-1 hover:bg-gray-100 rounded">
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div> */}
-                    <Calendar
-                      mode="single"
-                      selected={date}
-                      onSelect={setDate}
-                      className="rounded-md  flex"
-                    />
-                  </div>
-
-                  {/* Today's Activity */}
-                  <div className="mb-6">
-                    <h4 className="font-medium mb-4">Jun 18th (Today) Activity</h4>
-                    <div className="space-y-3">
-                      {activities.map((activity, index) => (
-                        <div key={index} className="flex items-center space-x-3">
-                          <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
-                            <File className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <span className="text-sm flex-1">
-                            <span className="font-medium">{activity.user}</span> {activity.action}
-                          </span>
-                          <button className="text-blue-600 text-sm hover:underline">
-                            {activity.link}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex justify-between">
-                    <Button variant="outline" className="text-blue-600 border-blue-600" onClick={() => navigate('/data-center')}>
-                      Go to Data Center
-                    </Button>
-                    <Button variant="outline" className="text-blue-600 border-blue-600" onClick={() => navigate('/chat')}>
-                      Go to Chat Room
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            {/* Right Sidebar */}
-            <div className="space-y-6 lg:col-span-2 lg:col-start-4">
-              {/* Collaborators */}
-              <Card className="">
-                <CardContent className="p-4 sm:p-6">
-                  <h3 className="text-lg font-semibold mb-4">2 Collaborators</h3>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-start space-x-3">
-                      <Avatar className="w-12 h-12">
-                        {/* <AvatarFallback className="bg-gray-800 text-white">BM</AvatarFallback> */}
-                      <img 
-                            src="/lovable-uploads/avatar2.jpg" 
-                           
-                            className="max-w-full h-auto rounded-lg shadow-lg"
-                      />
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="font-medium">Bashair Mussa (me)</div>
-                        <div className="text-sm text-gray-500">Researcher Role</div>
-                        <div className="flex space-x-2 mt-2">
-                          <Badge variant="outline" className="text-xs">Idea</Badge>
-                          <Badge variant="outline" className="text-xs">Proposal</Badge>
-                          <Badge variant="outline" className="text-xs">Grant Application</Badge>
-                        </div>
-                      </div>
-                      <button className="text-blue-600 hover:bg-blue-50 p-1 rounded">
-                        <MessageCircle className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    <div className="flex items-start space-x-3">
-                      <Avatar className="w-12 h-12">
-                        {/* <AvatarFallback className="bg-orange-500 text-white">AK</AvatarFallback> */}
-                      <img 
-                            src="/lovable-uploads/avatar1.jpg" 
-                           
-                            className="max-w-full h-auto rounded-lg shadow-lg"
-                      />
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="font-medium">Anna Krylova</div>
-                        <div className="text-sm text-gray-500">Researcher Role</div>
-                        <div className="flex space-x-2 mt-2">
-                          <Badge variant="outline" className="text-xs">Equipment</Badge>
-                          <Badge variant="outline" className="text-xs">Experiment</Badge>
-                        </div>
-                      </div>
-                      <button className="text-blue-600 hover:bg-blue-50 p-1 rounded">
-                        <MessageCircle className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <Button variant="outline" className="w-full mt-4">
-                    End Collaboration
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Supporting Services */}
-              <Card className="">
-                <CardContent className="p-4 sm:p-6">
-                  <h3 className="text-lg font-semibold mb-4">Supporting Services</h3>
-                  
-                  <div className="space-y-3">
-                    {supportingServicesData.map((service, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
-                            <service.icon className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <span className="text-sm">{service.name}</span>
-                        </div>
-                        <button className="text-blue-600 text-sm hover:underline">
-                          {service.link}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+          {renderTabContent()}
         </div>
       </div>
+
+      {/* End Collaboration Modal */}
+      <Dialog open={showEndCollaborationModal} onOpenChange={setShowEndCollaborationModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">End Collaboration</DialogTitle>
+          </DialogHeader>
+          <DialogDescription className="text-sm text-gray-600 mt-4">
+            Your collaboration has 2 days remaining, are you still going to end this collaboration?
+          </DialogDescription>
+          <DialogFooter className="mt-6">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowEndCollaborationModal(false)}
+              className="mr-2"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleEndCollaboration}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Yes, End Collaboration
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

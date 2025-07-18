@@ -5,6 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
+  Dialog,
+  DialogContent,
+} from '@/components/ui/dialog';
+import { 
   Home, 
   Users, 
   Bookmark, 
@@ -17,21 +21,41 @@ import {
   MoreHorizontal,
   Send,
   Phone,
-  MoreVertical
+  MoreVertical,
+  Mic,
+  Video,
+  PhoneOff,
+  MicOff,
+  Expand,
+  Monitor,
+  MicIcon
 } from 'lucide-react';
 
 const Chat = () => {
   const [message, setMessage] = useState('');
   const [activeTab, setActiveTab] = useState('In Progress');
-  const [sidebarOpen, setSidebarOpen] = useState(false); // Add sidebar state
+  const [showCallingModal, setShowCallingModal] = useState(false);
+  const [showExpandedCalling, setShowExpandedCalling] = useState(false);
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
   };
 
-  const sidebarItems = [
-    { icon: Home, label: 'Home', active: false },
+  const handlePhoneClick = () => {
+    setShowCallingModal(true);
+  };
+
+  const handleEndCall = () => {
+    setShowCallingModal(false);
+    setShowExpandedCalling(false);
+  };
+
+  const handleExpandCall = () => {
+    setShowExpandedCalling(true);
+  };
+
+  const home = [
     { icon: Users, label: 'Dashboard', active: false },
     { icon: Users, label: 'Discover Collaborators', active: false },
     { icon: Bookmark, label: 'Saved Collaborators', active: false },
@@ -117,27 +141,25 @@ const Chat = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar (drawer on mobile) */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black bg-opacity-30 md:hidden" onClick={() => setSidebarOpen(false)}></div>
-      )}
-      <div
-        className={
-          `fixed z-50 inset-y-0 left-0 w-64 bg-white border-r border-gray-200 flex flex-col transform transition-transform duration-200 md:static md:translate-x-0 md:flex ` +
-          (sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0')
-        }
-      >
+      {/* Sidebar */}
+      <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
         {/* Logo */}
-        <div className="p-6 border-b border-gray-200 flex items-center space-x-2">
-          <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
-            <span className="text-white font-bold text-sm">A</span>
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
+              <span className="text-white font-bold text-sm">A</span>
+            </div>
+            <span className="font-semibold text-lg">AIRCollab</span>
           </div>
-          <span className="font-semibold text-lg">AIRCollab</span>
         </div>
+
         {/* Navigation */}
-        <div className="flex-1 p-4 space-y-6 overflow-y-auto">
+        <div className="flex-1 p-4 space-y-6">
           <div>
-            {sidebarItems.map((item, index) => (
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 px-3">
+              Home
+            </div>
+            {home.map((item, index) => (
               <div
                 key={index}
                 className={`flex items-center space-x-3 px-3 py-2 rounded-md cursor-pointer ${
@@ -219,6 +241,7 @@ const Chat = () => {
             ))}
           </div>
         </div>
+
         {/* Settings */}
         <div className="p-4 border-t border-gray-200">
           <div className="flex items-center space-x-3 px-3 py-2 rounded-md cursor-pointer text-gray-700 hover:bg-gray-100"
@@ -228,6 +251,7 @@ const Chat = () => {
             <span className="text-sm">Settings</span>
           </div>
         </div>
+
         {/* User Profile */}
         <div className="p-4 border-t border-gray-200">
           <div className="flex items-center space-x-3">
@@ -244,29 +268,23 @@ const Chat = () => {
           </div>
         </div>
       </div>
+
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-4 py-4 flex items-center justify-between md:px-6">
-          <div className="flex items-center">
-            {/* Hamburger for mobile */}
-            <button
-              className="md:hidden mr-3 p-2 rounded hover:bg-gray-100 focus:outline-none"
-              onClick={() => setSidebarOpen(true)}
-              aria-label="Open sidebar"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-            </button>
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold text-gray-900">Chat</h1>
+            <Button onClick={handleSignOut} variant="outline" size="sm">
+              Sign Out
+            </Button>
           </div>
-          <Button onClick={handleSignOut} variant="outline" size="sm">
-            Sign Out
-          </Button>
         </div>
-        {/* Content */}
-        <div className="flex-1 p-2 sm:p-4 md:p-6 overflow-x-auto">
+
+        {/* Chat Content */}
+        <div className="flex-1 flex">
           {/* Left Panel - Conversations */}
-          <div className="w-full lg:w-1/3 bg-white border-r border-gray-200 flex flex-col">
+          <div className="w-100 bg-white border-r border-gray-200 flex flex-col">
             {/* Filter Tabs */}
             <div className="border-b border-gray-200 px-2 py-2">
               <div className="flex bg-gray-200 rounded-lg py-2 px-2">
@@ -303,22 +321,14 @@ const Chat = () => {
                 >
                   <div className="relative">
                     <Avatar className="w-12 h-12">
-                      {/* <AvatarFallback className={`${
-                        conversation.name === 'Anna Krylova' ? 'bg-orange-500' : 
-                        conversation.name === 'Kevin Rashy' ? 'bg-yellow-500' : 'bg-blue-500'
-                      } text-white text-sm`}>
-                        {conversation.avatar}
-                      </AvatarFallback> */}
-                       <img 
-                            src="/lovable-uploads/avatar1.jpg" 
-                           
-                            className="max-w-full h-auto rounded-lg shadow-lg"
+                      <img 
+                        src="/lovable-uploads/avatar1.jpg" 
+                        alt={conversation.name}
+                        className="w-full h-full object-cover rounded-lg"
                       />
                     </Avatar>
                     {conversation.online && (
-                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
-                        <span className="text-xs text-white">Online</span>
-                      </div>
+                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -338,29 +348,106 @@ const Chat = () => {
                 </div>
               ))}
             </div>
+
+            {/* Calling Card */}
+            {showCallingModal && (
+              <div className="p-4">
+                <div className="bg-gray-100 rounded-2xl p-6 relative">
+                  {/* Header with Calling text and expand icon */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="text-lg font-medium text-gray-800">Calling...</div>
+                    <button 
+                      onClick={handleExpandCall}
+                      className="text-gray-600 hover:text-gray-800"
+                    >
+                      <Expand className="w-5 h-5" />
+                    </button>
+                  </div>
+                  
+                  {/* Avatars */}
+                  <div className="flex items-center justify-center space-x-8 mb-8">
+                    <div className="relative">
+                      <Avatar className="w-20 h-20">
+                        <img 
+                          src="/lovable-uploads/avatar1.jpg" 
+                          alt="Anna Krylova"
+                          className="w-full h-full object-cover rounded-full"
+                        />
+                      </Avatar>
+                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-gray-100"></div>
+                    </div>
+                    
+                    <div className="relative">
+                      <div className="bg-gray-800 rounded-2xl w-20 h-20 flex items-center justify-center">
+                        <div className="text-xl font-bold text-white">BM</div>
+                      </div>
+                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-gray-100"></div>
+                    </div>
+                  </div>
+
+                  {/* Control Buttons */}
+                  <div className="flex items-center justify-center space-x-4">
+                    <Button
+                      variant="ghost" 
+                      size="sm"
+                      className="bg-green-500 hover:bg-green-600 rounded-2xl p-3 w-12 h-12"
+                    >
+                      <MicIcon className="w-5 h-5 text-white" />
+                    </Button>
+                    
+                    <Button
+                      variant="ghost" 
+                      size="sm"
+                      className="bg-red-500 hover:bg-red-600 rounded-2xl p-3 w-12 h-12"
+                    >
+                      <Video className="w-5 h-5 text-white" />
+                    </Button>
+                    
+                    <Button
+                      variant="ghost" 
+                      size="sm"
+                      className="bg-red-500 hover:bg-red-600 rounded-2xl p-3 w-12 h-12"
+                    >
+                      <Monitor className="w-5 h-5 text-white" />
+                    </Button>
+                    
+                    <Button
+                      variant="ghost" 
+                      size="sm"
+                      className="bg-red-500 hover:bg-red-600 rounded-2xl p-3 w-12 h-12"
+                      onClick={handleEndCall}
+                    >
+                      <PhoneOff className="w-5 h-5 text-white" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right Panel - Chat Messages */}
-          <div className="w-full lg:w-2/3 flex flex-col">
+          <div className="flex-1 flex flex-col">
             {/* Chat Header */}
             <div className="bg-white border-b border-gray-200 px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <Avatar className="w-12 h-12">
-                    {/* <AvatarFallback className="bg-orange-500 text-white">AK</AvatarFallback> */}
-                     <img 
-                            src="/lovable-uploads/avatar1.jpg" 
-                           
-                            className="max-w-full h-auto rounded-lg shadow-lg"
+                  <div className="relative">
+                    <Avatar className="w-12 h-12">
+                      <img 
+                        src="/lovable-uploads/avatar1.jpg" 
+                        alt="Anna Krylova"
+                        className="w-full h-full object-cover rounded-lg"
                       />
-                  </Avatar>
+                    </Avatar>
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                  </div>
                   <div>
                     <div className="font-medium">Anna Krylova</div>
                     <div className="text-sm text-green-600">Online</div>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Button variant="ghost" size="sm">
+                  <Button variant="ghost" size="sm" onClick={handlePhoneClick}>
                     <Phone className="w-4 h-4" />
                   </Button>
                   <Button variant="ghost" size="sm">
@@ -410,6 +497,83 @@ const Chat = () => {
           </div>
         </div>
       </div>
+
+      {/* Expanded Calling Modal */}
+      {showExpandedCalling && (
+        <Dialog open={showExpandedCalling} onOpenChange={setShowExpandedCalling}>
+          <DialogContent className="max-w-2xl">
+            <div className="bg-gray-100 rounded-2xl p-8">
+              {/* Header with Calling text and expand icon */}
+              <div className="flex items-center justify-between mb-8">
+                <div className="text-2xl font-medium text-gray-800">Calling...</div>
+                <button 
+                  onClick={() => setShowExpandedCalling(false)}
+                  className="text-gray-600 hover:text-gray-800"
+                >
+                  <Expand className="w-6 h-6" />
+                </button>
+              </div>
+              
+              {/* Large Avatars */}
+              <div className="flex items-center justify-center space-x-16 mb-12">
+                <div className="relative">
+                  <Avatar className="w-32 h-32">
+                    <img 
+                      src="/lovable-uploads/avatar1.jpg" 
+                      alt="Anna Krylova"
+                      className="w-full h-full object-cover rounded-full"
+                    />
+                  </Avatar>
+                  <div className="absolute -top-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-4 border-gray-100"></div>
+                </div>
+                
+                <div className="relative">
+                  <div className="bg-gray-800 rounded-3xl w-32 h-32 flex items-center justify-center">
+                    <div className="text-3xl font-bold text-white">BM</div>
+                  </div>
+                  <div className="absolute -top-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-4 border-gray-100"></div>
+                </div>
+              </div>
+
+              {/* Control Buttons */}
+              <div className="flex items-center justify-center space-x-6">
+                <Button
+                  variant="ghost" 
+                  size="lg"
+                  className="bg-green-500 hover:bg-green-600 rounded-3xl p-4 w-16 h-16"
+                >
+                  <MicIcon className="w-8 h-8 text-white" />
+                </Button>
+                
+                <Button
+                  variant="ghost" 
+                  size="lg"
+                  className="bg-red-500 hover:bg-red-600 rounded-3xl p-4 w-16 h-16"
+                >
+                  <Video className="w-8 h-8 text-white" />
+                </Button>
+                
+                <Button
+                  variant="ghost" 
+                  size="lg"
+                  className="bg-red-500 hover:bg-red-600 rounded-3xl p-4 w-16 h-16"
+                >
+                  <Monitor className="w-8 h-8 text-white" />
+                </Button>
+                
+                <Button
+                  variant="ghost" 
+                  size="lg"
+                  className="bg-red-500 hover:bg-red-600 rounded-3xl p-4 w-16 h-16"
+                  onClick={handleEndCall}
+                >
+                  <PhoneOff className="w-8 h-8 text-white" />
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };
