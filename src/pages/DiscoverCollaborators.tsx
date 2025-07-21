@@ -529,10 +529,8 @@ const DiscoverCollaborators = () => {
                 </PaginationContent>
               </Pagination>
             </div>
-          </div>
-        </div>
 
-        {/* Profile Modal */}
+          {/* Profile Modal */}
         <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -696,6 +694,7 @@ const DiscoverCollaborators = () => {
             )}
           </DialogContent>
         </Dialog>
+        </div>
       </div>
     </div>
   );
