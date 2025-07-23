@@ -25,6 +25,7 @@ const Equipment = () => {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    navigate('/auth');
   };
 
   const home = [

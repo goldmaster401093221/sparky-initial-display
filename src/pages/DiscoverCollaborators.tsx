@@ -57,6 +57,7 @@ const DiscoverCollaborators = () => {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    navigate('/auth');
   };
 
   const collaborators = [

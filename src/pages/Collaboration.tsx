@@ -40,6 +40,7 @@ const Collaboration = () => {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    navigate('/auth');
   };
 
   const handleEndCollaboration = () => {

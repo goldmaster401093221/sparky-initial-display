@@ -26,6 +26,7 @@ const Quotation = () => {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    navigate('/auth');
   };
 
   const home = [

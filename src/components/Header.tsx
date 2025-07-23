@@ -10,6 +10,7 @@ const Header = () => {
   
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    window.location.href = '/auth';
   };
 
   return (
