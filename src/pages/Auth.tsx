@@ -26,6 +26,7 @@ const Auth = () => {
     firstName: '',
     lastName: '',
     email: '',
+    password: '',
     orcidNumber: '',
     linkedinUrl: '',
     phone: '',
@@ -99,13 +100,11 @@ const Auth = () => {
     setLoading(true);
     
     try {
-      // Create password from first name + last name (simple approach)
-      const password = `${signupData.firstName}${signupData.lastName}123`;
       const redirectUrl = `${window.location.origin}/dashboard`;
       
       const { error } = await supabase.auth.signUp({
         email: signupData.email,
-        password,
+        password: signupData.password,
         options: {
           emailRedirectTo: redirectUrl,
           data: {
@@ -144,6 +143,7 @@ const Auth = () => {
         firstName: '',
         lastName: '',
         email: '',
+        password: '',
         orcidNumber: '',
         linkedinUrl: '',
         phone: '',
@@ -259,6 +259,7 @@ const Auth = () => {
                       firstName: signupData.firstName,
                       lastName: signupData.lastName,
                       email: signupData.email,
+                      password: signupData.password,
                       orcidNumber: signupData.orcidNumber,
                       linkedinUrl: signupData.linkedinUrl,
                       phone: signupData.phone,

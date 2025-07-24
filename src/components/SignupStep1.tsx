@@ -9,6 +9,7 @@ interface SignupStep1Props {
     firstName: string;
     lastName: string;
     email: string;
+    password: string;
     orcidNumber: string;
     linkedinUrl: string;
     phone: string;
@@ -68,6 +69,17 @@ const SignupStep1: React.FC<SignupStep1Props> = ({ formData, onChange, onNext })
             type="email"
             value={formData.email}
             onChange={(e) => onChange('email', e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
+            type="password"
+            value={formData.password}
+            onChange={(e) => onChange('password', e.target.value)}
             required
           />
         </div>
