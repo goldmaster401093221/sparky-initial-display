@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      calls: {
+        Row: {
+          callee_id: string
+          caller_id: string
+          created_at: string
+          ended_at: string | null
+          id: string
+          status: string
+        }
+        Insert: {
+          callee_id: string
+          caller_id: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          status?: string
+        }
+        Update: {
+          callee_id?: string
+          caller_id?: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          status?: string
+        }
+        Relationships: []
+      }
       collaborations: {
         Row: {
           collaborator_id: string
@@ -41,6 +68,68 @@ export type Database = {
         }
         Relationships: []
       }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_at: string | null
+          participant_1_id: string
+          participant_2_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          participant_1_id: string
+          participant_2_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          participant_1_id?: string
+          participant_2_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          sender_id: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          sender_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          sender_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -53,13 +142,16 @@ export type Database = {
           department: string | null
           email: string | null
           experience: string | null
+          favorite: string[] | null
           first_name: string | null
           gender: string | null
           google_scholar_url: string | null
           id: string
           institution: string | null
+          is_online: boolean | null
           keywords: string[] | null
           last_name: string | null
+          last_seen: string | null
           linkedin_url: string | null
           phone: string | null
           primary_research_area: string | null
@@ -87,13 +179,16 @@ export type Database = {
           department?: string | null
           email?: string | null
           experience?: string | null
+          favorite?: string[] | null
           first_name?: string | null
           gender?: string | null
           google_scholar_url?: string | null
           id: string
           institution?: string | null
+          is_online?: boolean | null
           keywords?: string[] | null
           last_name?: string | null
+          last_seen?: string | null
           linkedin_url?: string | null
           phone?: string | null
           primary_research_area?: string | null
@@ -121,13 +216,16 @@ export type Database = {
           department?: string | null
           email?: string | null
           experience?: string | null
+          favorite?: string[] | null
           first_name?: string | null
           gender?: string | null
           google_scholar_url?: string | null
           id?: string
           institution?: string | null
+          is_online?: boolean | null
           keywords?: string[] | null
           last_name?: string | null
+          last_seen?: string | null
           linkedin_url?: string | null
           phone?: string | null
           primary_research_area?: string | null
@@ -154,6 +252,10 @@ export type Database = {
       calculate_match_score: {
         Args: { user1_id: string; user2_id: string }
         Returns: number
+      }
+      mark_user_offline: {
+        Args: { user_id: string }
+        Returns: undefined
       }
     }
     Enums: {

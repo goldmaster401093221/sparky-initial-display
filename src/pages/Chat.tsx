@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
+import { useChat } from '@/hooks/useChat';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { useWebRTC } from '@/hooks/useWebRTC';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -9,6 +12,8 @@ import {
   Dialog,
   DialogContent,
 } from '@/components/ui/dialog';
+import { CallNotification } from '@/components/CallNotification';
+import { VideoCallInterface } from '@/components/VideoCallInterface';
 import { 
   Home, 
   Users, 
@@ -35,24 +40,92 @@ import {
 
 const Chat = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, profile, loading: profileLoading, getDisplayName, getInitials } = useProfile();
+  const { 
+    conversations, 
+    messages, 
+    activeConversation, 
+    loading: chatLoading,
+    setActiveConversation,
+    getOrCreateConversation,
+    sendMessage: sendChatMessage
+  } = useChat();
+  const { isUserOnline } = useOnlineStatus();
+  const {
+    localVideoRef,
+    remoteVideoRef,
+    isCallActive,
+    isMuted,
+    isVideoEnabled,
+    isScreenSharing,
+    incomingCall,
+    outgoingCall,
+    activeCall,
+    startCall,
+    answerCall,
+    declineCall,
+    endCall,
+    toggleMute,
+    toggleVideo,
+    toggleScreenShare
+  } = useWebRTC();
   const [message, setMessage] = useState('');
   const [activeTab, setActiveTab] = useState('In Progress');
-  const [showCallingModal, setShowCallingModal] = useState(false);
   const [showExpandedCalling, setShowExpandedCalling] = useState(false);
 
+  // Handle chat with specific user from URL params
+  useEffect(() => {
+    const chatWithUserId = searchParams.get('with');
+    if (chatWithUserId && user?.id) {
+      getOrCreateConversation(chatWithUserId).then((conversationId) => {
+        if (conversationId) {
+          setActiveConversation(conversationId);
+        }
+      });
+    }
+  }, [searchParams, user?.id, getOrCreateConversation, setActiveConversation]);
+
   const handleSignOut = async () => {
+    // Mark user as offline before signing out
+    if (user?.id) {
+      try {
+        await supabase
+          .from('profiles')
+          .update({
+            is_online: false,
+            last_seen: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+      } catch (error) {
+        console.error('Error marking user as offline:', error);
+      }
+    }
     await supabase.auth.signOut();
     navigate('/auth');
   };
 
   const handlePhoneClick = () => {
-    setShowCallingModal(true);
-    setShowExpandedCalling(false);
+    if (currentChatPartner?.id) {
+      startCall(currentChatPartner.id);
+    }
+  };
+
+  const handleAnswerCall = () => {
+    if (incomingCall) {
+      answerCall(incomingCall.id, incomingCall.offer);
+    }
+  };
+
+  const handleDeclineCall = () => {
+    if (incomingCall) {
+      declineCall(incomingCall.id);
+    }
   };
 
   const handleEndCall = () => {
-    setShowCallingModal(false);
+    endCall();
     setShowExpandedCalling(false);
   };
 
@@ -82,71 +155,42 @@ const Chat = () => {
     { icon: Wrench, label: 'Equipment', active: false },
   ];
 
-  const conversations = [
-    {
-      name: 'Anna Krylova',
-      lastMessage: 'im ipsum dolor sit amet,consectetur adipiscing',
-      time: '12:00 pm',
-      unread: 2,
-      avatar: 'AK',
-      online: true
-    },
-    {
-      name: 'Kevin Rashy',
-      lastMessage: '👋 Lorem ipsum dolor sit amet,consectetur adipiscing',
-      time: '12:00 pm',
-      unread: 0,
-      avatar: 'KR',
-      online: false
-    },
-    {
-      name: 'Group Members',
-      lastMessage: '👋 Lorem ipsum dolor sit amet,consectetur adipiscing',
-      time: '12:00 pm',
-      unread: 0,
-      avatar: 'GM',
-      online: false
+  const handleSendMessage = async () => {
+    if (message.trim() && activeConversation) {
+      await sendChatMessage(message);
+      setMessage('');
     }
-  ];
+  };
 
-  const messages = [
-    {
-      sender: 'Anna Krylova',
-      content: '👋 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-      time: '12 : 00 pm',
-      isOwn: false
-    },
-    {
-      sender: 'You',
-      content: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-      time: '12 : 00 pm',
-      isOwn: true
-    },
-    {
-      sender: 'You',
-      content: '👋 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-      time: '12 : 00 pm',
-      isOwn: true
-    },
-    {
-      sender: 'You',
-      content: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-      time: '12 : 00 pm',
-      isOwn: true
-    },
-    {
-      sender: 'You',
-      content: '👋 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-      time: '12 : 00 pm',
-      isOwn: true
-    },
-    {
-      sender: 'You',
-      content: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-      time: '12 : 00 pm',
-      isOwn: true
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  const getDisplayNameFromProfile = (profile: any) => {
+    if (profile?.first_name && profile?.last_name) {
+      return `${profile.first_name} ${profile.last_name}`;
     }
-  ];
+    return profile?.username || 'Unknown User';
+  };
+
+  const getInitialsFromProfile = (profile: any) => {
+    if (profile?.first_name && profile?.last_name) {
+      return `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase();
+    }
+    if (profile?.username) {
+      return profile.username.substring(0, 2).toUpperCase();
+    }
+    return 'UN';
+  };
+
+  // Get active conversation details
+  const activeConversationData = conversations.find(conv => conv.id === activeConversation);
+  const currentChatPartner = activeConversationData?.other_participant;
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -331,33 +375,48 @@ const Chat = () => {
 
             {/* Conversations List */}
             <div className="flex-1 overflow-y-auto">
-              {conversations.map((conversation, index) => (
+              {conversations.map((conversation) => (
                 <div
-                  key={index}
-                  className="flex items-center space-x-3 p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100"
+                  key={conversation.id}
+                  className={`flex items-center space-x-3 p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100 ${
+                    activeConversation === conversation.id ? 'bg-blue-50' : ''
+                  }`}
+                  onClick={() => setActiveConversation(conversation.id)}
                 >
                   <div className="relative">
                     <Avatar className="w-12 h-12">
-                      <img 
-                        src="/lovable-uploads/avatar1.jpg" 
-                        alt={conversation.name}
-                        className="w-full h-full object-cover rounded-lg"
-                      />
+                      {conversation.other_participant?.avatar_url ? (
+                        <AvatarImage 
+                          src={conversation.other_participant.avatar_url} 
+                          alt={getDisplayNameFromProfile(conversation.other_participant)}
+                        />
+                      ) : (
+                        <AvatarFallback className="bg-gray-800 text-white">
+                          {getInitialsFromProfile(conversation.other_participant)}
+                        </AvatarFallback>
+                      )}
                     </Avatar>
-                    {conversation.online && (
-                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                    {/* Online indicator */}
+                    {conversation.other_participant?.id && isUserOnline(conversation.other_participant.id) && (
+                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <div className="font-medium text-gray-900 truncate">{conversation.name}</div>
-                      <div className="text-xs text-gray-500">{conversation.time}</div>
+                      <div className="font-medium text-gray-900 truncate">
+                        {getDisplayNameFromProfile(conversation.other_participant)}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {formatTime(conversation.last_message_at)}
+                      </div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="text-sm text-gray-600 truncate">{conversation.lastMessage}</div>
-                      {conversation.unread > 0 && (
-                        <div className="bg-gray-100 text-gray-900 text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                          {conversation.unread}
+                      <div className="text-sm text-gray-600 truncate">
+                        {conversation.last_message || 'No messages yet'}
+                      </div>
+                      {(conversation.unread_count ?? 0) > 0 && (
+                        <div className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                          {conversation.unread_count}
                         </div>
                       )}
                     </div>
@@ -366,78 +425,32 @@ const Chat = () => {
               ))}
             </div>
 
-            {/* Small Calling Card - Only show when not expanded */}
-            {showCallingModal && !showExpandedCalling && (
+            {/* Video Call Interface - Show when call is active or there's an active call */}
+            {(isCallActive || outgoingCall || activeCall) && !showExpandedCalling && (
               <div className="p-4">
-                <div className="bg-gray-100 rounded-2xl p-6 relative">
-                  {/* Header with Calling text and expand icon */}
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="text-lg font-medium text-gray-800">Calling...</div>
-                    <button 
-                      onClick={handleExpandCall}
-                      className="text-gray-600 hover:text-gray-800"
-                    >
-                      <Expand className="w-5 h-5" />
-                    </button>
-                  </div>
-                  
-                  {/* Avatars */}
-                  <div className="flex items-center justify-center space-x-8 mb-8">
-                    <div className="relative">
-                      <Avatar className="w-20 h-20">
-                        <img 
-                          src="/lovable-uploads/avatar1.jpg" 
-                          alt="Anna Krylova"
-                          className="w-full h-full object-cover rounded-full"
-                        />
-                      </Avatar>
-                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-gray-100"></div>
-                    </div>
-                    
-                    <div className="relative">
-                      <div className="bg-gray-800 rounded-2xl w-20 h-20 flex items-center justify-center">
-                        <div className="text-xl font-bold text-white">BM</div>
-                      </div>
-                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-gray-100"></div>
-                    </div>
-                  </div>
-
-                  {/* Control Buttons */}
-                  <div className="flex items-center justify-center space-x-4">
-                    <Button
-                      variant="ghost" 
-                      size="sm"
-                      className="bg-green-500 hover:bg-green-600 rounded-2xl p-3 w-12 h-12"
-                    >
-                      <MicIcon className="w-5 h-5 text-white" />
-                    </Button>
-                    
-                    <Button
-                      variant="ghost" 
-                      size="sm"
-                      className="bg-red-500 hover:bg-red-600 rounded-2xl p-3 w-12 h-12"
-                    >
-                      <Video className="w-5 h-5 text-white" />
-                    </Button>
-                    
-                    <Button
-                      variant="ghost" 
-                      size="sm"
-                      className="bg-red-500 hover:bg-red-600 rounded-2xl p-3 w-12 h-12"
-                    >
-                      <Monitor className="w-5 h-5 text-white" />
-                    </Button>
-                    
-                    <Button
-                      variant="ghost" 
-                      size="sm"
-                      className="bg-red-500 hover:bg-red-600 rounded-2xl p-3 w-12 h-12"
-                      onClick={handleEndCall}
-                    >
-                      <PhoneOff className="w-5 h-5 text-white" />
-                    </Button>
-                  </div>
-                </div>
+                <VideoCallInterface
+                  localVideoRef={localVideoRef}
+                  remoteVideoRef={remoteVideoRef}
+                  isMuted={isMuted}
+                  isVideoEnabled={isVideoEnabled}
+                  isScreenSharing={isScreenSharing}
+                  isExpanded={false}
+                  remoteUserName={
+                    activeCall?.caller_profile 
+                      ? getDisplayNameFromProfile(activeCall.caller_profile)
+                      : currentChatPartner 
+                        ? getDisplayNameFromProfile(currentChatPartner)
+                        : 'Unknown User'
+                  }
+                  remoteUserAvatar={
+                    activeCall?.caller_profile?.avatar_url || currentChatPartner?.avatar_url
+                  }
+                  onToggleMute={toggleMute}
+                  onToggleVideo={toggleVideo}
+                  onToggleScreenShare={toggleScreenShare}
+                  onEndCall={handleEndCall}
+                  onToggleExpand={handleExpandCall}
+                />
               </div>
             )}
           </div>
@@ -447,24 +460,50 @@ const Chat = () => {
             {/* Chat Header */}
             <div className="bg-white border-b border-gray-200 px-6 py-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <Avatar className="w-12 h-12">
-                      <img 
-                        src="/lovable-uploads/avatar1.jpg" 
-                        alt="Anna Krylova"
-                        className="w-full h-full object-cover rounded-lg"
-                      />
-                    </Avatar>
-                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                {currentChatPartner ? (
+                  <div className="flex items-center space-x-3">
+                    <div className="relative">
+                      <Avatar className="w-12 h-12">
+                        {currentChatPartner.avatar_url ? (
+                          <AvatarImage 
+                            src={currentChatPartner.avatar_url} 
+                            alt={getDisplayNameFromProfile(currentChatPartner)}
+                          />
+                        ) : (
+                          <AvatarFallback className="bg-gray-800 text-white">
+                            {getInitialsFromProfile(currentChatPartner)}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      {/* Online indicator in chat header */}
+                      {currentChatPartner?.id && isUserOnline(currentChatPartner.id) && (
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                      )}
+                    </div>
+                    <div>
+                      <div className="font-medium">{getDisplayNameFromProfile(currentChatPartner)}</div>
+                      <div className="text-sm text-gray-500">
+                        {currentChatPartner?.id && isUserOnline(currentChatPartner.id) ? (
+                          <span className="text-green-600 font-medium">Online</span>
+                        ) : (
+                          "Click to start chatting"
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-medium">Anna Krylova</div>
-                    <div className="text-sm text-green-600">Online</div>
+                ) : (
+                  <div className="flex items-center space-x-3">
+                    <div className="font-medium">Select a conversation</div>
                   </div>
-                </div>
+                )}
                 <div className="flex items-center space-x-2">
-                  <Button variant="ghost" size="sm" onClick={handlePhoneClick}>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={handlePhoneClick}
+                    disabled={!currentChatPartner}
+                    className={!currentChatPartner ? "opacity-50 cursor-not-allowed" : ""}
+                  >
                     <Phone className="w-4 h-4" />
                   </Button>
                   <Button variant="ghost" size="sm">
@@ -476,120 +515,99 @@ const Chat = () => {
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {messages.map((msg, index) => (
-                <div
-                  key={index}
-                  className={`flex ${msg.isOwn ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                      msg.isOwn
-                        ? 'bg-gray-100 text-gray-900'
-                        : 'bg-gray-100 text-gray-900'
-                    }`}
-                  >
-                    <div className="text-sm">{msg.content}</div>
-                    <div className={`text-xs mt-1 ${msg.isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
-                      {msg.time}
+              {activeConversation ? (
+                messages.length > 0 ? (
+                  messages.map((msg) => {
+                    const isOwn = msg.sender_id === user?.id;
+                    return (
+                      <div
+                        key={msg.id}
+                        className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                            isOwn
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-gray-100 text-gray-900'
+                          }`}
+                        >
+                          <div className="text-sm">{msg.content}</div>
+                          <div className={`text-xs mt-1 ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
+                            {formatTime(msg.created_at)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-500">
+                    <div className="text-center">
+                      <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                      <p>No messages yet. Start the conversation!</p>
                     </div>
                   </div>
+                )
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  <div className="text-center">
+                    <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                    <p>Select a conversation to start chatting</p>
+                  </div>
                 </div>
-              ))}
+              )}
             </div>
 
             {/* Message Input */}
-            <div className="bg-white border-t border-gray-200 p-4">
-              <div className="flex items-center space-x-2">
-                <Input
-                  placeholder="Enter Message"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  className="flex-1"
-                />
-                <Button className="bg-blue-600 hover:bg-blue-700">
-                  <Send className="w-4 h-4" />
-                </Button>
+            {activeConversation && (
+              <div className="bg-white border-t border-gray-200 p-4">
+                <div className="flex items-center space-x-2">
+                  <Input
+                    placeholder="Enter Message"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    className="flex-1"
+                  />
+                  <Button 
+                    onClick={handleSendMessage}
+                    disabled={!message.trim()}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Expanded Calling Modal */}
-      {showExpandedCalling && (
-        <Dialog open={showExpandedCalling} onOpenChange={setShowExpandedCalling}>
-          <DialogContent className="max-w-2xl">
-            <div className="bg-gray-100 rounded-2xl p-8">
-              {/* Header with Calling text and minimize icon */}
-              <div className="flex items-center justify-between mb-8">
-                <div className="text-2xl font-medium text-gray-800">Calling...</div>
-                <button 
-                  onClick={handleMinimizeCall}
-                  className="text-gray-600 hover:text-gray-800"
-                >
-                  <Minimize2 className="w-6 h-6" />
-                </button>
-              </div>
-              
-              {/* Large Avatars */}
-              <div className="flex items-center justify-center space-x-16 mb-12">
-                <div className="relative">
-                  <Avatar className="w-32 h-32">
-                    <img 
-                      src="/lovable-uploads/avatar1.jpg" 
-                      alt="Anna Krylova"
-                      className="w-full h-full object-cover rounded-full"
-                    />
-                  </Avatar>
-                  <div className="absolute -top-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-4 border-gray-100"></div>
-                </div>
-                
-                <div className="relative">
-                  <div className="bg-gray-800 rounded-3xl w-32 h-32 flex items-center justify-center">
-                    <div className="text-3xl font-bold text-white">BM</div>
-                  </div>
-                  <div className="absolute -top-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-4 border-gray-100"></div>
-                </div>
-              </div>
+      {/* Expanded Video Call Interface */}
+      {showExpandedCalling && currentChatPartner && (isCallActive || activeCall) && (
+        <VideoCallInterface
+          localVideoRef={localVideoRef}
+          remoteVideoRef={remoteVideoRef}
+          isMuted={isMuted}
+          isVideoEnabled={isVideoEnabled}
+          isScreenSharing={isScreenSharing}
+          isExpanded={true}
+          remoteUserName={getDisplayNameFromProfile(currentChatPartner)}
+          remoteUserAvatar={currentChatPartner?.avatar_url}
+          onToggleMute={toggleMute}
+          onToggleVideo={toggleVideo}
+          onToggleScreenShare={toggleScreenShare}
+          onEndCall={handleEndCall}
+          onToggleExpand={handleMinimizeCall}
+        />
+      )}
 
-              {/* Control Buttons */}
-              <div className="flex items-center justify-center space-x-6">
-                <Button
-                  variant="ghost" 
-                  size="lg"
-                  className="bg-green-500 hover:bg-green-600 rounded-3xl p-4 w-16 h-16"
-                >
-                  <MicIcon className="w-8 h-8 text-white" />
-                </Button>
-                
-                <Button
-                  variant="ghost" 
-                  size="lg"
-                  className="bg-red-500 hover:bg-red-600 rounded-3xl p-4 w-16 h-16"
-                >
-                  <Video className="w-8 h-8 text-white" />
-                </Button>
-                
-                <Button
-                  variant="ghost" 
-                  size="lg"
-                  className="bg-red-500 hover:bg-red-600 rounded-3xl p-4 w-16 h-16"
-                >
-                  <Monitor className="w-8 h-8 text-white" />
-                </Button>
-                
-                <Button
-                  variant="ghost" 
-                  size="lg"
-                  className="bg-red-500 hover:bg-red-600 rounded-3xl p-4 w-16 h-16"
-                  onClick={handleEndCall}
-                >
-                  <PhoneOff className="w-8 h-8 text-white" />
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+      {/* Incoming Call Notification */}
+      {incomingCall && (
+        <CallNotification
+          call={incomingCall}
+          onAnswer={handleAnswerCall}
+          onDecline={handleDeclineCall}
+        />
       )}
     </div>
   );
