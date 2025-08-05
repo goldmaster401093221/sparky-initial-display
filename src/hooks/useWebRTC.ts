@@ -294,11 +294,12 @@ export const useWebRTC = () => {
     }
   }, [localStream]);
 
-  // Toggle video
+  // Toggle video visibility (camera stream stays active)
   const toggleVideo = useCallback(() => {
     if (localStream) {
       const videoTrack = localStream.getVideoTracks()[0];
       if (videoTrack) {
+        // Just toggle the enabled state to show/hide video
         videoTrack.enabled = !videoTrack.enabled;
         setIsVideoEnabled(videoTrack.enabled);
       }

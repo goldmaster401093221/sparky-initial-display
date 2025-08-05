@@ -12,6 +12,7 @@ export interface DataCenterFile {
   created_at: string;
   updated_at: string;
   views: number;
+  comment_count?: number;
   description?: string;
   uploader?: {
     first_name?: string;
@@ -61,10 +62,28 @@ export const useDataCenter = () => {
 
       if (profilesError) throw profilesError;
 
+      // Fetch comment counts for each file
+      const commentCounts = await Promise.all(
+        (filesData || []).map(async (file) => {
+          const { count, error } = await supabase
+            .from('data_center_comments')
+            .select('*', { count: 'exact', head: true })
+            .eq('file_id', file.id);
+          
+          if (error) {
+            console.error('Error fetching comment count:', error);
+            return { id: file.id, count: 0 };
+          }
+          
+          return { id: file.id, count: count || 0 };
+        })
+      );
+
       // Combine data
       const filesWithUploaders = filesData?.map(file => ({
         ...file,
-        uploader: profiles?.find(p => p.id === file.uploader_id)
+        uploader: profiles?.find(p => p.id === file.uploader_id),
+        comment_count: commentCounts.find(c => c.id === file.id)?.count || 0
       })) || [];
 
       setFiles(filesWithUploaders);
@@ -189,6 +208,7 @@ export const useDataCenter = () => {
       });
 
       await fetchComments(fileId);
+      await fetchFiles(); // Refresh file data to update comment count
     } catch (error) {
       console.error('Error adding comment:', error);
       toast({
