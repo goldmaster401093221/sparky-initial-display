@@ -33,11 +33,14 @@ const Auth = () => {
     researchgateUrl: '',
     googleScholarUrl: '',
     careerDescription: '',
+    gender: '',
+    highestDegree: '',
     // Step 2 - Institution Information
     institution: '',
     college: '',
     department: '',
     countryCity: '',
+    postcode: '',
     // Step 3 - Research Interest
     experienceYears: '',
     primaryResearchArea: '',
@@ -122,6 +125,9 @@ const Auth = () => {
             college: signupData.college,
             department: signupData.department,
             country_city: signupData.countryCity,
+            postcode: signupData.postcode,
+            gender: signupData.gender,
+            highest_degree: signupData.highestDegree,
             experience_years: signupData.experienceYears,
             primary_research_area: signupData.primaryResearchArea,
             secondary_research_area: signupData.secondaryResearchArea,
@@ -152,10 +158,13 @@ const Auth = () => {
         researchgateUrl: '',
         googleScholarUrl: '',
         careerDescription: '',
+        gender: '',
+        highestDegree: '',
         institution: '',
         college: '',
         department: '',
         countryCity: '',
+        postcode: '',
         experienceYears: '',
         primaryResearchArea: '',
         secondaryResearchArea: '',
@@ -269,6 +278,8 @@ const Auth = () => {
                       researchgateUrl: signupData.researchgateUrl,
                       googleScholarUrl: signupData.googleScholarUrl,
                       careerDescription: signupData.careerDescription,
+                      gender: signupData.gender,
+                      highestDegree: signupData.highestDegree,
                     }}
                     onChange={handleSignupFieldChange}
                     onNext={() => setCurrentStep(2)}
@@ -282,6 +293,7 @@ const Auth = () => {
                       college: signupData.college,
                       department: signupData.department,
                       countryCity: signupData.countryCity,
+                      postcode: signupData.postcode,
                     }}
                     onChange={handleSignupFieldChange}
                     onNext={() => setCurrentStep(3)}

@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface SignupStep1Props {
   formData: {
@@ -16,6 +17,8 @@ interface SignupStep1Props {
     researchgateUrl: string;
     googleScholarUrl: string;
     careerDescription: string;
+    gender: string;
+    highestDegree: string;
   };
   onChange: (field: string, value: string) => void;
   onNext: () => void;
@@ -144,6 +147,36 @@ const SignupStep1: React.FC<SignupStep1Props> = ({ formData, onChange, onNext })
             onChange={(e) => onChange('careerDescription', e.target.value)}
             placeholder="Brief description of your career"
           />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="gender">Gender</Label>
+            <Select value={formData.gender} onValueChange={(value) => onChange('gender', value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select gender" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="male">Male</SelectItem>
+                <SelectItem value="female">Female</SelectItem>
+                <SelectItem value="not_specified">Not want to mention</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="highestDegree">Highest Degree Achieved</Label>
+            <Select value={formData.highestDegree} onValueChange={(value) => onChange('highestDegree', value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select degree" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="bsc">BSc</SelectItem>
+                <SelectItem value="msc">MSc</SelectItem>
+                <SelectItem value="phd">Ph.D</SelectItem>
+                <SelectItem value="md">M.D</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <Button type="submit" className="w-full">

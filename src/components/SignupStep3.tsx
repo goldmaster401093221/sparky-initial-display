@@ -24,9 +24,56 @@ interface SignupStep3Props {
 const SignupStep3: React.FC<SignupStep3Props> = ({ formData, onChange, onFinish, onCancel, loading }) => {
   const [selectedKeyword, setSelectedKeyword] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
+  const [customKeyword, setCustomKeyword] = useState('');
+  const [customPrimaryArea, setCustomPrimaryArea] = useState('');
+  const [customSecondaryArea, setCustomSecondaryArea] = useState('');
 
-  const keywordOptions = ['Keyword1', 'Keyword2', 'Keyword3'];
-  const roleOptions = ['Role1', 'Role2', 'Researcher', 'Technical expertise'];
+  const experienceOptions = [
+    { value: '<5', label: 'Less than 5 years' },
+    { value: '5-10', label: '5-10 years' },
+    { value: '10-20', label: '10-20 years' },
+    { value: '>20', label: 'More than 20 years' }
+  ];
+
+  const researchAreaOptions = [
+    'Biomedical Sciences',
+    'Computer Science',
+    'Engineering',
+    'Physics',
+    'Chemistry',
+    'Biology',
+    'Mathematics',
+    'Environmental Science',
+    'Psychology',
+    'Medicine',
+    'Other'
+  ];
+
+  const keywordOptions = [
+    'Machine Learning',
+    'Artificial Intelligence',
+    'Data Science',
+    'Biotechnology',
+    'Nanotechnology',
+    'Molecular Biology',
+    'Genetics',
+    'Robotics',
+    'Quantum Computing',
+    'Climate Change',
+    'Other'
+  ];
+
+  const roleOptions = [
+    'Principal Investigator',
+    'Co-Principal Investigator',
+    'Co-Investigator',
+    'Research Associate',
+    'Research Assistant',
+    'Graduate Researcher',
+    'Postdoc',
+    'Research Technician',
+    'Undergraduate Researcher'
+  ];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +85,7 @@ const SignupStep3: React.FC<SignupStep3Props> = ({ formData, onChange, onFinish,
       onChange('keywords', [...formData.keywords, keyword]);
     }
     setSelectedKeyword('');
+    setCustomKeyword('');
   };
 
   const removeKeyword = (keyword: string) => {
@@ -55,6 +103,24 @@ const SignupStep3: React.FC<SignupStep3Props> = ({ formData, onChange, onFinish,
     onChange('researchRoles', formData.researchRoles.filter(r => r !== role));
   };
 
+  const handlePrimaryAreaChange = (value: string) => {
+    if (value === 'Other') {
+      onChange('primaryResearchArea', customPrimaryArea);
+    } else {
+      onChange('primaryResearchArea', value);
+      setCustomPrimaryArea('');
+    }
+  };
+
+  const handleSecondaryAreaChange = (value: string) => {
+    if (value === 'Other') {
+      onChange('secondaryResearchArea', customSecondaryArea);
+    } else {
+      onChange('secondaryResearchArea', value);
+      setCustomSecondaryArea('');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2">
@@ -69,54 +135,118 @@ const SignupStep3: React.FC<SignupStep3Props> = ({ formData, onChange, onFinish,
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="experienceYears">Research Experience in Years</Label>
-          <Input
-            id="experienceYears"
-            type="number"
-            value={formData.experienceYears}
-            onChange={(e) => onChange('experienceYears', e.target.value)}
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="primaryResearchArea">Primary Research Area</Label>
-          <Input
-            id="primaryResearchArea"
-            type="text"
-            value={formData.primaryResearchArea}
-            onChange={(e) => onChange('primaryResearchArea', e.target.value)}
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="secondaryResearchArea">Secondary Research Area</Label>
-          <Input
-            id="secondaryResearchArea"
-            type="text"
-            value={formData.secondaryResearchArea}
-            onChange={(e) => onChange('secondaryResearchArea', e.target.value)}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label>Specialization/Keywords</Label>
-          <Select value={selectedKeyword} onValueChange={(value) => {
-            setSelectedKeyword(value);
-            addKeyword(value);
-          }}>
+          <Label htmlFor="experienceYears">Research Experience in Years (Mandatory)</Label>
+          <Select value={formData.experienceYears} onValueChange={(value) => onChange('experienceYears', value)} required>
             <SelectTrigger>
-              <SelectValue placeholder="Select keywords" />
+              <SelectValue placeholder="Select experience range" />
             </SelectTrigger>
             <SelectContent>
-              {keywordOptions.map((keyword) => (
-                <SelectItem key={keyword} value={keyword}>
-                  {keyword}
+              {experienceOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="primaryResearchArea">Primary Research Area (Mandatory)</Label>
+          <Select value={formData.primaryResearchArea} onValueChange={handlePrimaryAreaChange} required>
+            <SelectTrigger>
+              <SelectValue placeholder="Select primary research area" />
+            </SelectTrigger>
+            <SelectContent>
+              {researchAreaOptions.map((area) => (
+                <SelectItem key={area} value={area}>
+                  {area}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {formData.primaryResearchArea === 'Other' && (
+            <Input
+              placeholder="Enter custom primary research area"
+              value={customPrimaryArea}
+              onChange={(e) => {
+                setCustomPrimaryArea(e.target.value);
+                onChange('primaryResearchArea', e.target.value);
+              }}
+              required
+            />
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="secondaryResearchArea">Secondary Research Area (Mandatory)</Label>
+          <Select value={formData.secondaryResearchArea} onValueChange={handleSecondaryAreaChange} required>
+            <SelectTrigger>
+              <SelectValue placeholder="Select secondary research area" />
+            </SelectTrigger>
+            <SelectContent>
+              {researchAreaOptions.map((area) => (
+                <SelectItem key={area} value={area}>
+                  {area}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {formData.secondaryResearchArea === 'Other' && (
+            <Input
+              placeholder="Enter custom secondary research area"
+              value={customSecondaryArea}
+              onChange={(e) => {
+                setCustomSecondaryArea(e.target.value);
+                onChange('secondaryResearchArea', e.target.value);
+              }}
+              required
+            />
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Specialization/Keywords (Optional)</Label>
+          <div className="flex gap-2">
+            <Select value={selectedKeyword} onValueChange={(value) => {
+              setSelectedKeyword(value);
+              if (value !== 'Other') {
+                addKeyword(value);
+              }
+            }}>
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Select keywords" />
+              </SelectTrigger>
+              <SelectContent>
+                {keywordOptions.map((keyword) => (
+                  <SelectItem key={keyword} value={keyword}>
+                    {keyword}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {selectedKeyword === 'Other' && (
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter custom keyword"
+                value={customKeyword}
+                onChange={(e) => setCustomKeyword(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addKeyword(customKeyword);
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                onClick={() => addKeyword(customKeyword)}
+                disabled={!customKeyword.trim()}
+              >
+                Add
+              </Button>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2 mt-2">
             {formData.keywords.map((keyword) => (
               <Badge key={keyword} variant="secondary" className="flex items-center gap-1">
@@ -136,7 +266,7 @@ const SignupStep3: React.FC<SignupStep3Props> = ({ formData, onChange, onFinish,
         </div>
 
         <div className="space-y-2">
-          <Label>Describe Your Research Role</Label>
+          <Label>Describe Your Research Role (Optional)</Label>
           <Select value={selectedRole} onValueChange={(value) => {
             setSelectedRole(value);
             addRole(value);
