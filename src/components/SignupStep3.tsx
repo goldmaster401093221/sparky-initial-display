@@ -152,7 +152,7 @@ const SignupStep3: React.FC<SignupStep3Props> = ({ formData, onChange, onFinish,
 
         <div className="space-y-2">
           <Label htmlFor="primaryResearchArea">Primary Research Area (Mandatory)</Label>
-          <Select value={formData.primaryResearchArea} onValueChange={handlePrimaryAreaChange} required>
+          <Select value={formData.primaryResearchArea === customPrimaryArea && customPrimaryArea ? 'Other' : formData.primaryResearchArea} onValueChange={handlePrimaryAreaChange} required>
             <SelectTrigger>
               <SelectValue placeholder="Select primary research area" />
             </SelectTrigger>
@@ -164,10 +164,10 @@ const SignupStep3: React.FC<SignupStep3Props> = ({ formData, onChange, onFinish,
               ))}
             </SelectContent>
           </Select>
-          {formData.primaryResearchArea === 'Other' && (
+          {(formData.primaryResearchArea === 'Other' || (customPrimaryArea && !researchAreaOptions.includes(formData.primaryResearchArea))) && (
             <Input
               placeholder="Enter custom primary research area"
-              value={customPrimaryArea}
+              value={customPrimaryArea || formData.primaryResearchArea}
               onChange={(e) => {
                 setCustomPrimaryArea(e.target.value);
                 onChange('primaryResearchArea', e.target.value);
@@ -179,7 +179,7 @@ const SignupStep3: React.FC<SignupStep3Props> = ({ formData, onChange, onFinish,
 
         <div className="space-y-2">
           <Label htmlFor="secondaryResearchArea">Secondary Research Area (Mandatory)</Label>
-          <Select value={formData.secondaryResearchArea} onValueChange={handleSecondaryAreaChange} required>
+          <Select value={formData.secondaryResearchArea === customSecondaryArea && customSecondaryArea ? 'Other' : formData.secondaryResearchArea} onValueChange={handleSecondaryAreaChange} required>
             <SelectTrigger>
               <SelectValue placeholder="Select secondary research area" />
             </SelectTrigger>
@@ -191,10 +191,10 @@ const SignupStep3: React.FC<SignupStep3Props> = ({ formData, onChange, onFinish,
               ))}
             </SelectContent>
           </Select>
-          {formData.secondaryResearchArea === 'Other' && (
+          {(formData.secondaryResearchArea === 'Other' || (customSecondaryArea && !researchAreaOptions.includes(formData.secondaryResearchArea))) && (
             <Input
               placeholder="Enter custom secondary research area"
-              value={customSecondaryArea}
+              value={customSecondaryArea || formData.secondaryResearchArea}
               onChange={(e) => {
                 setCustomSecondaryArea(e.target.value);
                 onChange('secondaryResearchArea', e.target.value);
