@@ -25,6 +25,8 @@ const Auth = () => {
     // Step 1 - Personal Information
     firstName: '',
     lastName: '',
+    gender: '',
+    highestDegree: '',
     email: '',
     password: '',
     orcidNumber: '',
@@ -33,8 +35,6 @@ const Auth = () => {
     researchgateUrl: '',
     googleScholarUrl: '',
     careerDescription: '',
-    gender: '',
-    highestDegree: '',
     // Step 2 - Institution Information
     institution: '',
     college: '',
@@ -47,6 +47,7 @@ const Auth = () => {
     secondaryResearchArea: '',
     keywords: [] as string[],
     researchRoles: [] as string[],
+    specializationKeywords: [] as string[],
   });
 
   useEffect(() => {
@@ -111,9 +112,11 @@ const Auth = () => {
         password: signupData.password,
         options: {
           emailRedirectTo: redirectUrl,
-          data: {
+            data: {
             first_name: signupData.firstName,
             last_name: signupData.lastName,
+            gender: signupData.gender,
+            highest_degree: signupData.highestDegree,
             username: `${signupData.firstName.toLowerCase()}${signupData.lastName.toLowerCase()}`,
             orcid_number: signupData.orcidNumber,
             linkedin_url: signupData.linkedinUrl,
@@ -126,12 +129,10 @@ const Auth = () => {
             department: signupData.department,
             country_city: signupData.countryCity,
             postcode: signupData.postcode,
-            gender: signupData.gender,
-            highest_degree: signupData.highestDegree,
             experience_years: signupData.experienceYears,
             primary_research_area: signupData.primaryResearchArea,
             secondary_research_area: signupData.secondaryResearchArea,
-            keywords: signupData.keywords.join(','),
+            specialization_keywords: signupData.specializationKeywords.join(','),
             research_roles: signupData.researchRoles.join(','),
           }
         }
@@ -150,6 +151,8 @@ const Auth = () => {
       setSignupData({
         firstName: '',
         lastName: '',
+        gender: '',
+        highestDegree: '',
         email: '',
         password: '',
         orcidNumber: '',
@@ -158,8 +161,6 @@ const Auth = () => {
         researchgateUrl: '',
         googleScholarUrl: '',
         careerDescription: '',
-        gender: '',
-        highestDegree: '',
         institution: '',
         college: '',
         department: '',
@@ -170,6 +171,7 @@ const Auth = () => {
         secondaryResearchArea: '',
         keywords: [],
         researchRoles: [],
+        specializationKeywords: [],
       });
     } catch (error: any) {
       toast({
@@ -270,6 +272,8 @@ const Auth = () => {
                     formData={{
                       firstName: signupData.firstName,
                       lastName: signupData.lastName,
+                      gender: signupData.gender,
+                      highestDegree: signupData.highestDegree,
                       email: signupData.email,
                       password: signupData.password,
                       orcidNumber: signupData.orcidNumber,
@@ -278,8 +282,6 @@ const Auth = () => {
                       researchgateUrl: signupData.researchgateUrl,
                       googleScholarUrl: signupData.googleScholarUrl,
                       careerDescription: signupData.careerDescription,
-                      gender: signupData.gender,
-                      highestDegree: signupData.highestDegree,
                     }}
                     onChange={handleSignupFieldChange}
                     onNext={() => setCurrentStep(2)}
@@ -309,6 +311,7 @@ const Auth = () => {
                       secondaryResearchArea: signupData.secondaryResearchArea,
                       keywords: signupData.keywords,
                       researchRoles: signupData.researchRoles,
+                      specializationKeywords: signupData.specializationKeywords,
                     }}
                     onChange={handleSignupFieldChange}
                     onFinish={handleSignupFinish}
