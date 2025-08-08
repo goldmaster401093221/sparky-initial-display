@@ -683,7 +683,7 @@ const SavedCollaborators = () => {
               <div>
                 <label className="text-sm font-medium text-gray-600 mb-2 block">What I have</label>
                 <div className="flex flex-wrap gap-2">
-                  {selectedProfile.what_i_have?.map((item, index) => (
+                  {selectedProfile.research_roles?.map((item, index) => (
                     <Badge key={index} variant="secondary" className="text-xs">
                       {item}
                     </Badge>
@@ -695,11 +695,8 @@ const SavedCollaborators = () => {
               <div>
                 <label className="text-sm font-medium text-gray-600 mb-2 block">What I need</label>
                 <div className="flex flex-wrap gap-2">
-                  {selectedProfile.what_i_need?.map((item, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs">
-                      {item}
-                    </Badge>
-                  )) || <span className="text-xs text-gray-500">No items listed</span>}
+                  <Badge variant="secondary" className="text-xs">Equipment</Badge>
+                  <Badge variant="secondary" className="text-xs">Experiment</Badge>
                 </div>
               </div>
 
