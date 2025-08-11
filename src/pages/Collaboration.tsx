@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
@@ -68,6 +68,46 @@ const Collaboration = () => {
     // Here you would typically save the feedback to the database
     // and update the collaboration status
   };
+
+  // Incoming collaboration requests for the current user
+  const [requests, setRequests] = useState<any[]>([]);
+  const [requesterProfiles, setRequesterProfiles] = useState<Record<string, any>>({});
+  const [loadingRequests, setLoadingRequests] = useState(false);
+
+  const fetchRequests = async () => {
+    if (!user) return;
+    setLoadingRequests(true);
+    const { data, error } = await supabase
+      .from('collaborations')
+      .select('*')
+      .eq('collaborator_id', user.id)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching requests', error);
+      setLoadingRequests(false);
+      return;
+    }
+
+    const list = (data || []) as any[];
+    setRequests(list);
+    const requesterIds = Array.from(new Set(list.map((r: any) => r.requester_id)));
+    if (requesterIds.length) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', requesterIds);
+      const map: Record<string, any> = {};
+      (profiles || []).forEach((p: any) => { map[p.id] = p; });
+      setRequesterProfiles(map);
+    } else {
+      setRequesterProfiles({});
+    }
+    setLoadingRequests(false);
+  };
+
+  useEffect(() => { fetchRequests(); }, [user]);
 
   const home = [
     { icon: Users, label: 'Dashboard', active: false },
@@ -222,74 +262,88 @@ const Collaboration = () => {
         <div className="grid grid-cols-6 gap-4">
           {/* Main Collaboration Content */}
           <div className="col-span-4">
-            <Card>
-              <CardContent className="p-6">
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold">Collaboration Status</h3>
-                    <Badge className="bg-blue-100 text-blue-800 border-blue-200 px-3 py-1">
-                      Incoming Request
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex items-center space-x-4 text-sm text-gray-600 mb-6">
-                    <span>From 2025-06-04</span>
-                    <span>To 2025-06-25</span>
-                  </div>
-                </div>
+            {loadingRequests ? (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-sm text-gray-500">Loading requests...</div>
+                </CardContent>
+              </Card>
+            ) : requests.length === 0 ? (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-sm text-gray-500">No incoming requests.</div>
+                </CardContent>
+              </Card>
+            ) : (
+              requests.map((req: any) => {
+                const requester = requesterProfiles[req.requester_id];
+                return (
+                  <Card key={req.id} className="mb-4">
+                    <CardContent className="p-6">
+                      <div className="mb-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-semibold">Collaboration Status</h3>
+                          <Badge className="bg-blue-100 text-blue-800 border-blue-200 px-3 py-1">
+                            Incoming Request
+                          </Badge>
+                        </div>
+                        <div className="flex items-center space-x-4 text-sm text-gray-600 mb-6">
+                          <span>From {req.start_date || '-'}</span>
+                          <span>To {req.end_date || '-'}</span>
+                        </div>
+                      </div>
 
-                <div className="mb-6">
-                  <h4 className="font-medium mb-4">Collaborator</h4>
-                  
-                  <div className="flex items-start space-x-3 mb-6">
-                    <Avatar className="w-12 h-12">
-                      <img 
-                        src="/lovable-uploads/avatar1.jpg" 
-                        className="max-w-full h-auto rounded-lg shadow-lg"
-                      />
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="font-medium">Anna Krylova</div>
-                      <div className="text-sm text-gray-500">Researcher Role</div>
-                      <div className="flex space-x-2 mt-2">
-                        <Badge variant="outline" className="text-xs">Equipment</Badge>
-                        <Badge variant="outline" className="text-xs">Experiment</Badge>
-                      </div>
-                    </div>
-                    <button className="text-blue-600 hover:bg-blue-50 p-2 rounded-full">
-                      <MessageSquare className="w-5 h-5" />
-                    </button>
-                  </div>
+                      <div className="mb-6">
+                        <h4 className="font-medium mb-4">Collaborator</h4>
+                        <div className="flex items-start space-x-3 mb-6">
+                          <Avatar className="w-12 h-12">
+                            {requester?.avatar_url ? (
+                              <AvatarImage src={requester.avatar_url} alt={requester?.first_name || 'Collaborator'} />
+                            ) : (
+                              <AvatarFallback className="bg-gray-800 text-white text-sm">
+                                {(requester?.first_name?.[0] || 'U') + (requester?.last_name?.[0] || '')}
+                              </AvatarFallback>
+                            )}
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="font-medium">{requester ? `${requester.first_name || ''} ${requester.last_name || ''}`.trim() || requester.email : 'Unknown user'}</div>
+                            <div className="text-sm text-gray-500">Researcher Role</div>
+                            <div className="flex space-x-2 mt-2">
+                              <Badge variant="outline" className="text-xs">Equipment</Badge>
+                              <Badge variant="outline" className="text-xs">Experiment</Badge>
+                            </div>
+                          </div>
+                          <button className="text-blue-600 hover:bg-blue-50 p-2 rounded-full">
+                            <MessageSquare className="w-5 h-5" />
+                          </button>
+                        </div>
 
-                  <div className="mb-6">
-                    <h4 className="font-medium mb-4">Terms of Collaboration</h4>
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox id="term1" defaultChecked />
-                        <label htmlFor="term1" className="text-sm">Term of collaboration</label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox id="term2" />
-                        <label htmlFor="term2" className="text-sm">Term of collaboration</label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox id="term3" defaultChecked />
-                        <label htmlFor="term3" className="text-sm">Term of collaboration</label>
-                      </div>
-                    </div>
-                  </div>
+                        <div className="mb-6">
+                          <h4 className="font-medium mb-4">Terms of Collaboration</h4>
+                          <div className="space-y-3">
+                            {(req.terms || ['Term of collaboration']).map((t: string, i: number) => (
+                              <div key={i} className="flex items-center space-x-2">
+                                <Checkbox id={`term-${req.id}-${i}`} defaultChecked disabled />
+                                <label htmlFor={`term-${req.id}-${i}`} className="text-sm">{t}</label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
 
-                  <div className="flex space-x-4">
-                    <Button className="bg-blue-600 hover:bg-blue-700">
-                      Accept Request
-                    </Button>
-                    <Button variant="outline" className="text-blue-600 border-blue-600">
-                      Reject Request
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                        <div className="flex space-x-4">
+                          <Button className="bg-blue-600 hover:bg-blue-700" disabled>
+                            Accept Request
+                          </Button>
+                          <Button variant="outline" className="text-blue-600 border-blue-600" disabled>
+                            Reject Request
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
           </div>
         </div>
       );
