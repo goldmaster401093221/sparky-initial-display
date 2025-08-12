@@ -168,7 +168,7 @@ const DiscoverCollaborators = () => {
     const payload: any = {
       requester_id: user.id,
       collaborator_id: (selectedProfile as any).id,
-      status: 'pending',
+      status: 'contacted',
       start_date: startDate.toISOString().slice(0, 10),
       end_date: endDate.toISOString().slice(0, 10),
       terms,

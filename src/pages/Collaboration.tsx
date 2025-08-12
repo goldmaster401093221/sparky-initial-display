@@ -34,6 +34,7 @@ import {
   File,
   MessageCircle
 } from 'lucide-react';
+import { format } from 'date-fns';
 
 const Collaboration = () => {
   const navigate = useNavigate();
@@ -74,6 +75,19 @@ const Collaboration = () => {
   const [requesterProfiles, setRequesterProfiles] = useState<Record<string, any>>({});
   const [loadingRequests, setLoadingRequests] = useState(false);
 
+  // In-progress and history collaborations
+  const [inProgress, setInProgress] = useState<any[]>([]);
+  const [historyItems, setHistoryItems] = useState<any[]>([]);
+  const [inProgressProfiles, setInProgressProfiles] = useState<Record<string, any>>({});
+  const [historyProfiles, setHistoryProfiles] = useState<Record<string, any>>({});
+  const [loadingInProgress, setLoadingInProgress] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Upcoming collaborations
+  const [upcoming, setUpcoming] = useState<any[]>([]);
+  const [upcomingProfiles, setUpcomingProfiles] = useState<Record<string, any>>({});
+  const [loadingUpcoming, setLoadingUpcoming] = useState(false);
+
   const fetchRequests = async () => {
     if (!user) return;
     setLoadingRequests(true);
@@ -81,7 +95,7 @@ const Collaboration = () => {
       .from('collaborations')
       .select('*')
       .eq('collaborator_id', user.id)
-      .eq('status', 'pending')
+      .eq('status', 'contacted')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -107,7 +121,132 @@ const Collaboration = () => {
     setLoadingRequests(false);
   };
 
-  useEffect(() => { fetchRequests(); }, [user]);
+  const fetchInProgress = async () => {
+    if (!user) return;
+    setLoadingInProgress(true);
+    const today = new Date().toISOString().slice(0, 10);
+    const { data, error } = await supabase
+      .from('collaborations')
+      .select('*')
+      .or(`requester_id.eq.${user.id},collaborator_id.eq.${user.id}`)
+      .eq('status', 'collaborated')
+      .lte('start_date', today)
+      .gte('end_date', today)
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('Error fetching in-progress collaborations', error);
+      setLoadingInProgress(false);
+      return;
+    }
+    const rows = (data || []) as any[];
+    setInProgress(rows);
+    const otherIds = Array.from(new Set(rows.map((r:any) => r.requester_id === user.id ? r.collaborator_id : r.requester_id)));
+    if (otherIds.length) {
+      const { data: profs } = await supabase.from('profiles').select('*').in('id', otherIds);
+      const map: Record<string, any> = {};
+      (profs || []).forEach((p:any)=>{ map[p.id]=p; });
+      setInProgressProfiles(map);
+    } else {
+      setInProgressProfiles({});
+    }
+    setLoadingInProgress(false);
+  };
+
+  const fetchHistory = async () => {
+    if (!user) return;
+    setLoadingHistory(true);
+    const today = new Date().toISOString().slice(0, 10);
+    const { data, error } = await supabase
+      .from('collaborations')
+      .select('*')
+      .or(`requester_id.eq.${user.id},collaborator_id.eq.${user.id}`)
+      .eq('status', 'collaborated')
+      .lt('end_date', today)
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('Error fetching history', error);
+      setLoadingHistory(false);
+      return;
+    }
+    const rows = (data || []) as any[];
+    setHistoryItems(rows);
+    const otherIds = Array.from(new Set(rows.map((r:any) => r.requester_id === user.id ? r.collaborator_id : r.requester_id)));
+    if (otherIds.length) {
+      const { data: profs } = await supabase.from('profiles').select('*').in('id', otherIds);
+      const map: Record<string, any> = {};
+      (profs || []).forEach((p:any)=>{ map[p.id]=p; });
+      setHistoryProfiles(map);
+    } else {
+      setHistoryProfiles({});
+    }
+    setLoadingHistory(false);
+  };
+
+  const fetchUpcoming = async () => {
+    if (!user) return;
+    setLoadingUpcoming(true);
+    const today = new Date().toISOString().slice(0, 10);
+    const { data, error } = await supabase
+      .from('collaborations')
+      .select('*')
+      .or(`requester_id.eq.${user.id},collaborator_id.eq.${user.id}`)
+      .eq('status', 'collaborated')
+      .gt('start_date', today)
+      .order('start_date', { ascending: true });
+    if (error) {
+      console.error('Error fetching upcoming collaborations', error);
+      setLoadingUpcoming(false);
+      return;
+    }
+    const rows = (data || []) as any[];
+    setUpcoming(rows);
+    const otherIds = Array.from(new Set(rows.map((r:any) => r.requester_id === user.id ? r.collaborator_id : r.requester_id)));
+    if (otherIds.length) {
+      const { data: profs } = await supabase.from('profiles').select('*').in('id', otherIds);
+      const map: Record<string, any> = {};
+      (profs || []).forEach((p:any)=>{ map[p.id]=p; });
+      setUpcomingProfiles(map);
+    } else {
+      setUpcomingProfiles({});
+    }
+    setLoadingUpcoming(false);
+  };
+
+  const handleAccept = async (req: any) => {
+    const { error } = await supabase
+      .from('collaborations')
+      .update({ status: 'collaborated' })
+      .eq('id', req.id);
+    if (error) {
+      console.error('Accept error', error);
+      toast({ title: 'Failed to accept', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Request accepted' });
+    fetchRequests();
+    fetchInProgress();
+  };
+
+  const handleReject = async (req: any) => {
+    const { error } = await supabase
+      .from('collaborations')
+      .update({ status: 'declined' })
+      .eq('id', req.id);
+    if (error) {
+      console.error('Reject error', error);
+      toast({ title: 'Failed to reject', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Request rejected' });
+    fetchRequests();
+  };
+
+  useEffect(() => {
+    fetchRequests();
+    fetchInProgress();
+    fetchHistory();
+    fetchUpcoming();
+  }, [user]);
 
   const home = [
     { icon: Users, label: 'Dashboard', active: false },
@@ -182,76 +321,136 @@ const Collaboration = () => {
     if (activeTab === 'Upcoming') {
       return (
         <div className="grid grid-cols-6 gap-4">
-          {/* Main Collaboration Content */}
           <div className="col-span-4">
-            <Card>
-              <CardContent className="p-6">
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold">Collaboration Status</h3>
-                    <Badge className="bg-green-100 text-green-800 border-green-200 px-3 py-1">
-                      Upcoming
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex items-center space-x-4 text-sm text-gray-600 mb-6">
-                    <span>From 2025-06-04</span>
-                    <span>To 2025-06-25</span>
-                  </div>
-                </div>
-
-                <div className="mb-6">
-                  <h4 className="font-medium mb-4">2 Collaborators</h4>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-start space-x-3">
-                      <Avatar className="w-12 h-12">
-                        <img 
-                          src="/lovable-uploads/avatar2.jpg" 
-                          className="max-w-full h-auto rounded-lg shadow-lg"
-                        />
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="font-medium">Bashair Mussa (me)</div>
-                        <div className="text-sm text-gray-500">Researcher Role</div>
-                        <div className="flex space-x-2 mt-2">
-                          <Badge variant="outline" className="text-xs">Idea</Badge>
-                          <Badge variant="outline" className="text-xs">Proposal</Badge>
-                          <Badge variant="outline" className="text-xs">Grant Application</Badge>
+            {loadingUpcoming ? (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-sm text-gray-500">Loading upcoming collaborations...</div>
+                </CardContent>
+              </Card>
+            ) : upcoming.length === 0 ? (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-sm text-gray-500">No upcoming collaborations.</div>
+                </CardContent>
+              </Card>
+            ) : (
+              upcoming.map((c: any) => {
+                const otherParticipantId = c.requester_id === user?.id ? c.collaborator_id : c.requester_id;
+                const otherParticipant = upcomingProfiles[otherParticipantId];
+                const isRequester = c.requester_id === user?.id;
+                
+                return (
+                  <Card key={c.id} className="mb-4">
+                    <CardContent className="p-6">
+                      <div className="mb-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-semibold">Collaboration Status</h3>
+                          <Badge className="bg-green-100 text-green-800 border-green-200 px-3 py-1">
+                            Upcoming
+                          </Badge>
+                        </div>
+                        
+                        <div className="flex items-center space-x-4 text-sm text-gray-600 mb-6">
+                          <span>From {c.start_date || '-'}</span>
+                          <span>To {c.end_date || '-'}</span>
                         </div>
                       </div>
-                      <button className="text-blue-600 hover:bg-blue-50 p-2 rounded-full">
-                        <MessageSquare className="w-5 h-5" />
-                      </button>
-                    </div>
 
-                    <div className="flex items-start space-x-3">
-                      <Avatar className="w-12 h-12">
-                        <img 
-                          src="/lovable-uploads/avatar1.jpg" 
-                          className="max-w-full h-auto rounded-lg shadow-lg"
-                        />
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="font-medium">Anna Krylova</div>
-                        <div className="text-sm text-gray-500">Researcher Role</div>
-                        <div className="flex space-x-2 mt-2">
-                          <Badge variant="outline" className="text-xs">Equipment</Badge>
-                          <Badge variant="outline" className="text-xs">Experiment</Badge>
+                      <div className="mb-6">
+                        <h4 className="font-medium mb-4">Collaborators</h4>
+                        
+                        <div className="space-y-4">
+                          {/* Current user */}
+                          <div className="flex items-start space-x-3">
+                            <Avatar className="w-12 h-12">
+                              {profile?.avatar_url ? (
+                                <AvatarImage src={profile.avatar_url} alt={getDisplayName()} />
+                              ) : (
+                                <AvatarFallback className="bg-gray-800 text-white text-sm">
+                                  {getInitials()}
+                                </AvatarFallback>
+                              )}
+                            </Avatar>
+                            <div className="flex-1">
+                              <div className="font-medium">{getDisplayName()} (me)</div>
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {(profile as any)?.research_roles && typeof (profile as any).research_roles === 'string' ? 
+                                  (profile as any).research_roles.split(',').map((role: string, i: number) => (
+                                    <Badge key={i} variant="outline" className="text-xs">{role.trim()}</Badge>
+                                  )) : 
+                                  <Badge variant="outline" className="text-xs">Researcher</Badge>
+                                }
+                              </div>
+                              <div className="flex space-x-2 mt-2">
+                                {(profile as any)?.specialization_keywords && typeof (profile as any).specialization_keywords === 'string' ? 
+                                  (profile as any).specialization_keywords.split(',').slice(0, 3).map((keyword: string, i: number) => (
+                                    <Badge key={i} variant="outline" className="text-xs">{keyword.trim()}</Badge>
+                                  )) : 
+                                  ((profile as any)?.research_roles && typeof (profile as any).research_roles === 'string' ? 
+                                    (profile as any).research_roles.split(',').map((role: string, i: number) => (
+                                      <Badge key={i} variant="outline" className="text-xs">{role.trim()}</Badge>
+                                    )) : null
+                                  )
+                                }
+                              </div>
+                            </div>
+                            <button className="text-blue-600 hover:bg-blue-50 p-2 rounded-full" onClick={() => navigate(`/chat?with=${otherParticipantId}`)}>
+                              <MessageSquare className="w-5 h-5" />
+                            </button>
+                          </div>
+
+                          {/* Other participant */}
+                          <div className="flex items-start space-x-3">
+                            <Avatar className="w-12 h-12">
+                              {otherParticipant?.avatar_url ? (
+                                <AvatarImage src={otherParticipant.avatar_url} alt={`${otherParticipant?.first_name || ''} ${otherParticipant?.last_name || ''}`.trim()} />
+                              ) : (
+                                <AvatarFallback className="bg-gray-800 text-white text-sm">
+                                  {(otherParticipant?.first_name?.[0] || 'U') + (otherParticipant?.last_name?.[0] || '')}
+                                </AvatarFallback>
+                              )}
+                            </Avatar>
+                            <div className="flex-1">
+                              <div className="font-medium">
+                                {otherParticipant ? `${otherParticipant.first_name || ''} ${otherParticipant.last_name || ''}`.trim() || otherParticipant.email : 'Unknown user'}
+                              </div>
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {otherParticipant?.research_roles && typeof otherParticipant.research_roles === 'string' ? 
+                                  otherParticipant.research_roles.split(',').map((role: string, i: number) => (
+                                    <Badge key={i} variant="outline" className="text-xs">{role.trim()}</Badge>
+                                  )) : 
+                                  <Badge variant="outline" className="text-xs">Researcher</Badge>
+                                }
+                              </div>
+                              <div className="flex space-x-2 mt-2">
+                                {otherParticipant?.specialization_keywords && typeof otherParticipant.specialization_keywords === 'string' ? 
+                                  otherParticipant.specialization_keywords.split(',').slice(0, 3).map((keyword: string, i: number) => (
+                                    <Badge key={i} variant="outline" className="text-xs">{keyword.trim()}</Badge>
+                                  )) : 
+                                  (otherParticipant?.research_roles && typeof otherParticipant.research_roles === 'string' ? 
+                                    otherParticipant.research_roles.split(',').map((role: string, i: number) => (
+                                      <Badge key={i} variant="outline" className="text-xs">{role.trim()}</Badge>
+                                    )) : null
+                                  )
+                                }
+                              </div>
+                            </div>
+                            <button className="text-blue-600 hover:bg-blue-50 p-2 rounded-full" onClick={() => navigate(`/chat?with=${otherParticipantId}`)}>
+                              <MessageSquare className="w-5 h-5" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                      <button className="text-blue-600 hover:bg-blue-50 p-2 rounded-full">
-                        <MessageSquare className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
 
-                  <Button variant="outline" className="w-full mt-4">
-                    Invite More
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                        <Button variant="outline" className="w-full mt-4" onClick={()=>{navigate('/discover-collaborators');}}>
+                          Invite More
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
           </div>
         </div>
       );
@@ -330,13 +529,240 @@ const Collaboration = () => {
                           </div>
                         </div>
 
-                        <div className="flex space-x-4">
-                          <Button className="bg-blue-600 hover:bg-blue-700" disabled>
-                            Accept Request
+                          <div className="flex space-x-4">
+                            <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => handleAccept(req)}>
+                              Accept Request
+                            </Button>
+                            <Button variant="outline" className="text-blue-600 border-blue-600" onClick={() => handleReject(req)}>
+                              Reject Request
+                            </Button>
+                          </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (activeTab === 'In Progress') {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
+          {/* Left: Status, Calendar, Activity, Actions */}
+          <div className="md:col-span-4 space-y-6">
+            {loadingInProgress ? (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-sm text-gray-500">Loading...</div>
+                </CardContent>
+              </Card>
+            ) : inProgress.length === 0 ? (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-sm text-gray-500">No active collaborations.</div>
+                </CardContent>
+              </Card>
+            ) : (
+              inProgress.map((c: any) => {
+                const otherId = c.requester_id === user?.id ? c.collaborator_id : c.requester_id;
+                const other = inProgressProfiles[otherId];
+                const todayLabel = `${format(new Date(), 'MMM do')}`;
+                return (
+                  <div key={c.id} className="space-y-6">
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="mb-4 flex items-center justify-between">
+                          <h3 className="text-lg font-semibold">Collaboration Status</h3>
+                          <Badge className="bg-green-100 text-green-800 border-green-200 px-3 py-1">In Progress</Badge>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-gray-600 mb-6">
+                          <span>From {c.start_date || '-'}</span>
+                          <span>To {c.end_date || '-'}</span>
+                        </div>
+                        <Calendar
+                          mode="single"
+                          selected={date}
+                          onSelect={setDate}
+                          className="rounded-md border"
+                        />
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-6">
+                        <h4 className="font-medium mb-4">{todayLabel} (Today) Activity</h4>
+                        <div className="space-y-3">
+                          {activities.slice(0, 5).map((activity, i) => (
+                            <div key={i} className="flex items-start gap-3">
+                              <div className="w-9 h-9 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center">
+                                <File className="w-4 h-4" />
+                              </div>
+                              <div className="flex-1 text-sm">
+                                <span className="font-medium">{activity.user}</span> {activity.action}
+                                <button className="ml-2 text-blue-600 hover:underline">{activity.link}</button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-6 flex flex-wrap gap-3">
+                          <Button variant="outline" className="text-blue-600 border-blue-600" onClick={() => navigate('/data-center')}>
+                            Go to Data Center
                           </Button>
-                          <Button variant="outline" className="text-blue-600 border-blue-600" disabled>
-                            Reject Request
+                          <Button variant="outline" className="text-blue-600 border-blue-600" onClick={() => navigate(`/chat?with=${otherId}`)}>
+                            Go to Chat Room
                           </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Right: Collaborators + Supporting Services */}
+          <aside className="md:col-span-2 space-y-6">
+            {inProgress.map((c: any) => {
+              const otherId = c.requester_id === user?.id ? c.collaborator_id : c.requester_id;
+              const other = inProgressProfiles[otherId];
+              return (
+                <div key={`aside-${c.id}`} className="space-y-6">
+                  <Card>
+                    <CardContent className="p-6">
+                      <h4 className="font-medium mb-4">{other ? '2 Collaborators' : 'Collaborators'}</h4>
+                      <div className="space-y-4">
+                        {/* Current user */}
+                        <div className="flex items-start gap-3">
+                          <Avatar className="w-10 h-10">
+                            {profile?.avatar_url ? (
+                              <AvatarImage src={profile.avatar_url} alt={getDisplayName()} />
+                            ) : (
+                              <AvatarFallback className="bg-gray-800 text-white text-xs">{getInitials()}</AvatarFallback>
+                            )}
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">{getDisplayName()} (me)</div>
+                            <div className="text-xs text-gray-500">Researcher Role</div>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <Badge variant="outline" className="text-xs">Idea</Badge>
+                              <Badge variant="outline" className="text-xs">Proposal</Badge>
+                              <Badge variant="outline" className="text-xs">Grant Application</Badge>
+                            </div>
+                          </div>
+                          <button className="text-blue-600 hover:bg-blue-50 p-2 rounded-full" onClick={() => navigate(`/chat?with=${otherId}`)}>
+                            <MessageSquare className="w-5 h-5" />
+                          </button>
+                        </div>
+
+                        {/* Other participant */}
+                        <div className="flex items-start gap-3">
+                          <Avatar className="w-10 h-10">
+                            {other?.avatar_url ? (
+                              <AvatarImage src={other.avatar_url} alt={`${other?.first_name || ''} ${other?.last_name || ''}`.trim()} />
+                            ) : (
+                              <AvatarFallback className="bg-gray-800 text-white text-xs">{(other?.first_name?.[0] || 'U') + (other?.last_name?.[0] || '')}</AvatarFallback>
+                            )}
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">{other ? `${other.first_name || ''} ${other.last_name || ''}`.trim() || other.email : 'Unknown user'}</div>
+                            <div className="text-xs text-gray-500">Researcher Role</div>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <Badge variant="outline" className="text-xs">Equipment</Badge>
+                              <Badge variant="outline" className="text-xs">Experiment</Badge>
+                            </div>
+                          </div>
+                          <button className="text-blue-600 hover:bg-blue-50 p-2 rounded-full" onClick={() => navigate(`/chat?with=${otherId}`)}>
+                            <MessageSquare className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <Button variant="outline" className="w-full mt-6" onClick={() => setShowEndCollaborationModal(true)}>
+                        End Collaboration
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-6">
+                      <h4 className="font-medium mb-4">Supporting Services</h4>
+                      <div className="space-y-4">
+                        {supportingServicesData.map((s, i) => (
+                          <div key={i} className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center">
+                                <s.icon className="w-4 h-4" />
+                              </div>
+                              <div className="text-sm">{s.name}</div>
+                            </div>
+                            <button className="text-blue-600 hover:underline text-sm">{s.link}</button>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            })}
+          </aside>
+        </div>
+      );
+    }
+
+    if (activeTab === 'History') {
+      return (
+        <div className="grid grid-cols-6 gap-4">
+          <div className="col-span-4">
+            {loadingHistory ? (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-sm text-gray-500">Loading...</div>
+                </CardContent>
+              </Card>
+            ) : historyItems.length === 0 ? (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-sm text-gray-500">No completed collaborations.</div>
+                </CardContent>
+              </Card>
+            ) : (
+              historyItems.map((c: any) => {
+                const otherId = c.requester_id === user?.id ? c.collaborator_id : c.requester_id;
+                const other = historyProfiles[otherId];
+                return (
+                  <Card key={c.id} className="mb-4">
+                    <CardContent className="p-6">
+                      <div className="mb-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-semibold">Collaboration</h3>
+                          <Badge className="bg-gray-100 text-gray-800 border-gray-200 px-3 py-1">
+                            Completed
+                          </Badge>
+                        </div>
+                        <div className="flex items-center space-x-4 text-sm text-gray-600 mb-6">
+                          <span>From {c.start_date || '-'}</span>
+                          <span>To {c.end_date || '-'}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-3 mb-6">
+                        <Avatar className="w-12 h-12">
+                          {other?.avatar_url ? (
+                            <AvatarImage src={other.avatar_url} alt={other?.first_name || 'Collaborator'} />
+                          ) : (
+                            <AvatarFallback className="bg-gray-800 text-white text-sm">
+                              {(other?.first_name?.[0] || 'U') + (other?.last_name?.[0] || '')}
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="font-medium">
+                            {other ? `${other.first_name || ''} ${other.last_name || ''}`.trim() || other.email : 'Unknown user'}
+                          </div>
+                          <div className="text-sm text-gray-500">Researcher Role</div>
                         </div>
                       </div>
                     </CardContent>
@@ -349,155 +775,7 @@ const Collaboration = () => {
       );
     }
 
-    // Default "In Progress" content
-    return (
-      <div className="grid grid-cols-6 gap-4">
-        {/* Main Collaboration Content */}
-        <div className="col-span-2 ">
-          <Card>
-            <CardContent className="p-6">
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">Collaboration Status</h3>
-                  <Badge className="bg-green-100 text-green-800 border-green-200 px-3 py-1">
-                    In Progress
-                  </Badge>
-                </div>
-                
-                <div className="flex items-center space-x-4 text-sm text-gray-600 mb-6">
-                  <span>From 2025-06-04</span>
-                  <span>To 2025-06-25</span>
-                </div>
-              </div>
-
-              {/* Calendar */}
-              <div className="mb-6">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  className="rounded-md  flex"
-                />
-              </div>
-
-              {/* Today's Activity */}
-              <div className="mb-6">
-                <h4 className="font-medium mb-4">Jun 18th (Today) Activity</h4>
-                <div className="space-y-3">
-                  {activities.map((activity, index) => (
-                    <div key={index} className="flex items-center space-x-3">
-                      <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
-                        <File className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <span className="text-sm flex-1">
-                        <span className="font-medium">{activity.user}</span> {activity.action}
-                      </span>
-                      <button className="text-blue-600 text-sm hover:underline">
-                        {activity.link}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-between">
-                <Button variant="outline" className="text-blue-600 border-blue-600" onClick={() => navigate('/data-center')}>
-                  Go to Data Center
-                </Button>
-                <Button variant="outline" className="text-blue-600 border-blue-600" onClick={() => navigate('/chat')}>
-                  Go to Chat Room
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right Sidebar */}
-        <div className="space-y-6 col-span-2 col-start-4">
-          {/* Collaborators */}
-          <Card className="">
-            <CardContent className="p-6">
-              <h3 className="text-lg font-semibold mb-4">2 Collaborators</h3>
-              
-              <div className="space-y-4">
-                <div className="flex items-start space-x-3">
-                  <Avatar className="w-12 h-12">
-                    <img 
-                      src="/lovable-uploads/avatar2.jpg" 
-                      className="max-w-full h-auto rounded-lg shadow-lg"
-                    />
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="font-medium">Bashair Mussa (me)</div>
-                    <div className="text-sm text-gray-500">Researcher Role</div>
-                    <div className="flex space-x-2 mt-2">
-                      <Badge variant="outline" className="text-xs">Idea</Badge>
-                      <Badge variant="outline" className="text-xs">Proposal</Badge>
-                      <Badge variant="outline" className="text-xs">Grant Application</Badge>
-                    </div>
-                  </div>
-                  <button className="text-blue-600 hover:bg-blue-50 p-2 rounded-full">
-                    <MessageSquare className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="flex items-start space-x-3">
-                  <Avatar className="w-12 h-12">
-                    <img 
-                      src="/lovable-uploads/avatar1.jpg" 
-                      className="max-w-full h-auto rounded-lg shadow-lg"
-                    />
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="font-medium">Anna Krylova</div>
-                    <div className="text-sm text-gray-500">Researcher Role</div>
-                    <div className="flex space-x-2 mt-2">
-                      <Badge variant="outline" className="text-xs">Equipment</Badge>
-                      <Badge variant="outline" className="text-xs">Experiment</Badge>
-                    </div>
-                  </div>
-                  <button className="text-blue-600 hover:bg-blue-50 p-2 rounded-full">
-                    <MessageSquare className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              <Button 
-                variant="outline" 
-                className="w-full mt-4"
-                onClick={() => setShowEndCollaborationModal(true)}
-              >
-                End Collaboration
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Supporting Services */}
-          <Card className="">
-            <CardContent className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Supporting Services</h3>
-              
-              <div className="space-y-3">
-                {supportingServicesData.map((service, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
-                        <service.icon className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <span className="text-sm">{service.name}</span>
-                    </div>
-                    <button className="text-blue-600 text-sm hover:underline">
-                      {service.link}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
+    return null;
   };
 
   return (
