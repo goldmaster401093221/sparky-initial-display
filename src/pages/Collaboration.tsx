@@ -743,7 +743,7 @@ const Collaboration = () => {
                                 </div>
                                 <div className="flex-1 text-sm">
                                   <span className="font-medium">{activity.user}</span> {activity.action}
-                                  <button className="ml-2 text-blue-600 hover:underline">{activity.link}</button>
+                                  <button className="ml-2 text-blue-600 hover:underline invisible">{activity.link}</button>
                                 </div>
                               </div>
                             ))
@@ -842,7 +842,7 @@ const Collaboration = () => {
                               </div>
                               <div className="text-sm">{s.name}</div>
                             </div>
-                            <button className="text-blue-600 hover:underline text-sm">{s.link}</button>
+                            <button className="text-blue-600 hover:underline text-sm invisible">{s.link}</button>
                           </div>
                         ))}
                       </div>
