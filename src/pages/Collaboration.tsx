@@ -44,15 +44,47 @@ const Collaboration = () => {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [showEndCollaborationModal, setShowEndCollaborationModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [endingCollabId, setEndingCollabId] = useState<string | null>(null);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate('/auth');
   };
 
-  const handleEndCollaboration = () => {
-    setShowEndCollaborationModal(false);
-    setShowFeedbackModal(true);
+  const handleEndCollaboration = async () => {
+    try {
+      if (!endingCollabId || !user) {
+        setShowEndCollaborationModal(false);
+        return;
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      const { error } = await supabase
+        .from('collaborations')
+        .update({
+          status: 'ended',
+          end_date: today,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', endingCollabId);
+
+      if (error) {
+        console.error('End collaboration error', error);
+        toast({ title: 'Failed to end collaboration', description: error.message, variant: 'destructive' });
+        return;
+      }
+
+      setShowEndCollaborationModal(false);
+      setShowFeedbackModal(true);
+      setEndingCollabId(null);
+
+      // Refresh lists so UI reflects the changes immediately
+      fetchInProgress();
+      fetchHistory();
+      fetchTodayActivities();
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: 'Failed to end collaboration', description: e?.message || 'Unknown error', variant: 'destructive' });
+    }
   };
 
   const handleFeedbackSubmit = (feedback: {
@@ -160,21 +192,35 @@ const Collaboration = () => {
     if (!user) return;
     setLoadingHistory(true);
     const today = new Date().toISOString().slice(0, 10);
-    const { data, error } = await supabase
-      .from('collaborations')
-      .select('*')
-      .or(`requester_id.eq.${user.id},collaborator_id.eq.${user.id}`)
-      .eq('status', 'collaborated')
-      .lt('end_date', today)
-      .order('created_at', { ascending: false });
-    if (error) {
-      console.error('Error fetching history', error);
+
+    const [pastRes, endedRes] = await Promise.all([
+      supabase
+        .from('collaborations')
+        .select('*')
+        .or(`requester_id.eq.${user.id},collaborator_id.eq.${user.id}`)
+        .eq('status', 'collaborated')
+        .lt('end_date', today)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('collaborations')
+        .select('*')
+        .or(`requester_id.eq.${user.id},collaborator_id.eq.${user.id}`)
+        .eq('status', 'ended')
+        .order('updated_at', { ascending: false })
+    ]);
+
+    if (pastRes.error || endedRes.error) {
+      console.error('Error fetching history', pastRes.error || endedRes.error);
       setLoadingHistory(false);
       return;
     }
-    const rows = (data || []) as any[];
+
+    const rows = ([...(pastRes.data || []), ...(endedRes.data || [])] as any[])
+      .reduce((acc: any[], curr: any) => (acc.some((r:any) => r.id === curr.id) ? acc : acc.concat(curr)), []);
+
     setHistoryItems(rows);
-    const otherIds = Array.from(new Set(rows.map((r:any) => r.requester_id === user.id ? r.collaborator_id : r.requester_id)));
+
+    const otherIds = Array.from(new Set(rows.map((r:any) => r.requester_id === user.id ? r.collaborator_id : r.requester_id))) as string[];
     if (otherIds.length) {
       const { data: profs } = await supabase.from('profiles').select('*').in('id', otherIds);
       const map: Record<string, any> = {};
@@ -824,7 +870,7 @@ const Collaboration = () => {
                         </div>
                       </div>
 
-                      <Button variant="outline" className="w-full mt-6" onClick={() => setShowEndCollaborationModal(true)}>
+                      <Button variant="outline" className="w-full mt-6" onClick={() => { setEndingCollabId(c.id); setShowEndCollaborationModal(true); }}>
                         End Collaboration
                       </Button>
                     </CardContent>
@@ -883,7 +929,7 @@ const Collaboration = () => {
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="text-lg font-semibold">Collaboration</h3>
                           <Badge className="bg-gray-100 text-gray-800 border-gray-200 px-3 py-1">
-                            Completed
+                            {c.status === 'ended' ? 'Ended' : 'Completed'}
                           </Badge>
                         </div>
                         <div className="flex items-center space-x-4 text-sm text-gray-600 mb-6">
