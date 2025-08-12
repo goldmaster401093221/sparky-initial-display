@@ -88,6 +88,10 @@ const Collaboration = () => {
   const [upcomingProfiles, setUpcomingProfiles] = useState<Record<string, any>>({});
   const [loadingUpcoming, setLoadingUpcoming] = useState(false);
 
+  // Today activities per collaboration
+  const [todayActivities, setTodayActivities] = useState<Record<string, { user: string; action: string; link: string }[]>>({});
+  const [loadingActivities, setLoadingActivities] = useState(false);
+
   const fetchRequests = async () => {
     if (!user) return;
     setLoadingRequests(true);
@@ -227,6 +231,135 @@ const Collaboration = () => {
     fetchInProgress();
   };
 
+  // Build today's activity feed per collaboration
+  const fetchTodayActivities = async () => {
+    if (!user || inProgress.length === 0) return;
+    setLoadingActivities(true);
+
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    const startISO = start.toISOString();
+    const endISO = end.toISOString();
+
+    const participantIds = new Set<string>();
+    inProgress.forEach((c: any) => {
+      participantIds.add(user.id);
+      participantIds.add(c.requester_id === user.id ? c.collaborator_id : c.requester_id);
+    });
+    const ids = Array.from(participantIds);
+
+    const [filesRes, commentsRes] = await Promise.all([
+      supabase
+        .from('data_center_files')
+        .select('id,uploader_id,created_at')
+        .in('uploader_id', ids)
+        .gte('created_at', startISO)
+        .lt('created_at', endISO),
+      supabase
+        .from('data_center_comments')
+        .select('id,user_id,created_at')
+        .in('user_id', ids)
+        .gte('created_at', startISO)
+        .lt('created_at', endISO),
+    ]);
+
+    const files = (filesRes.data || []) as any[];
+    const comments = (commentsRes.data || []) as any[];
+
+    const filesByUser: Record<string, number> = {};
+    files.forEach((f: any) => {
+      filesByUser[f.uploader_id] = (filesByUser[f.uploader_id] || 0) + 1;
+    });
+
+    const commentsByUser: Record<string, number> = {};
+    comments.forEach((cm: any) => {
+      commentsByUser[cm.user_id] = (commentsByUser[cm.user_id] || 0) + 1;
+    });
+
+    const isToday = (ts?: string) => {
+      if (!ts) return false;
+      const d = new Date(ts);
+      return d >= start && d <= end;
+    };
+
+    const nameFor = (uid: string) => {
+      if (uid === user.id) return getDisplayName();
+      const p = inProgressProfiles[uid];
+      if (!p) return 'Collaborator';
+      const full = `${p.first_name || ''} ${p.last_name || ''}`.trim();
+      return full || p.email || 'Collaborator';
+    };
+
+    const map: Record<string, { user: string; action: string; link: string }[]> = {};
+
+    inProgress.forEach((c: any) => {
+      const otherId = c.requester_id === user.id ? c.collaborator_id : c.requester_id;
+      const items: { user: string; action: string; link: string }[] = [];
+
+      // Request received today (if you're the collaborator)
+      if (user.id === c.collaborator_id && isToday(c.created_at)) {
+        items.push({
+          user: nameFor(otherId),
+          action: 'sent you a collaboration request',
+          link: 'View'
+        });
+      }
+
+      // Collaboration ends today (by date)
+      if (c.end_date && c.end_date === new Date().toISOString().slice(0, 10)) {
+        items.push({ user: 'System', action: 'Collaboration ends today', link: 'View' });
+      }
+
+      // Collaboration status updated to ended/declined/completed today
+      if (isToday(c.updated_at) && ['ended', 'declined', 'completed'].includes(c.status)) {
+        items.push({ user: 'System', action: 'Collaboration updated today', link: 'View' });
+      }
+
+      // Files uploaded today by participants
+      const otherFiles = filesByUser[otherId] || 0;
+      const myFiles = filesByUser[user.id] || 0;
+      if (otherFiles > 0) {
+        items.push({
+          user: nameFor(otherId),
+          action: `attached ${otherFiles} file${otherFiles > 1 ? 's' : ''}`,
+          link: 'View'
+        });
+      }
+      if (myFiles > 0) {
+        items.push({
+          user: 'You',
+          action: `attached ${myFiles} file${myFiles > 1 ? 's' : ''}`,
+          link: 'View'
+        });
+      }
+
+      // Comments left today by participants
+      const otherComments = commentsByUser[otherId] || 0;
+      const myComments = commentsByUser[user.id] || 0;
+      if (otherComments > 0) {
+        items.push({
+          user: nameFor(otherId),
+          action: `has left ${otherComments} comment${otherComments > 1 ? 's' : ''}`,
+          link: 'View'
+        });
+      }
+      if (myComments > 0) {
+        items.push({
+          user: 'You',
+          action: `have left ${myComments} comment${myComments > 1 ? 's' : ''}`,
+          link: 'View'
+        });
+      }
+
+      map[c.id] = items;
+    });
+
+    setTodayActivities(map);
+    setLoadingActivities(false);
+  };
+
   const handleReject = async (req: any) => {
     const { error } = await supabase
       .from('collaborations')
@@ -247,6 +380,11 @@ const Collaboration = () => {
     fetchHistory();
     fetchUpcoming();
   }, [user]);
+
+  useEffect(() => {
+    // refresh activities whenever collaborations or participant profiles change
+    fetchTodayActivities();
+  }, [inProgress, inProgressProfiles, user]);
 
   const home = [
     { icon: Users, label: 'Dashboard', active: false },
@@ -595,17 +733,23 @@ const Collaboration = () => {
                       <CardContent className="p-6">
                         <h4 className="font-medium mb-4">{todayLabel} (Today) Activity</h4>
                         <div className="space-y-3">
-                          {activities.slice(0, 5).map((activity, i) => (
-                            <div key={i} className="flex items-start gap-3">
-                              <div className="w-9 h-9 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center">
-                                <File className="w-4 h-4" />
+                          {loadingActivities ? (
+                            <div className="text-sm text-gray-500">Loading today's activity...</div>
+                          ) : todayActivities[c.id] && todayActivities[c.id].length > 0 ? (
+                            todayActivities[c.id].map((activity, i) => (
+                              <div key={i} className="flex items-start gap-3">
+                                <div className="w-9 h-9 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center">
+                                  <File className="w-4 h-4" />
+                                </div>
+                                <div className="flex-1 text-sm">
+                                  <span className="font-medium">{activity.user}</span> {activity.action}
+                                  <button className="ml-2 text-blue-600 hover:underline">{activity.link}</button>
+                                </div>
                               </div>
-                              <div className="flex-1 text-sm">
-                                <span className="font-medium">{activity.user}</span> {activity.action}
-                                <button className="ml-2 text-blue-600 hover:underline">{activity.link}</button>
-                              </div>
-                            </div>
-                          ))}
+                            ))
+                          ) : (
+                            <div className="text-sm text-gray-500">No activity yet today.</div>
+                          )}
                         </div>
                         <div className="mt-6 flex flex-wrap gap-3">
                           <Button variant="outline" className="text-blue-600 border-blue-600" onClick={() => navigate('/data-center')}>
