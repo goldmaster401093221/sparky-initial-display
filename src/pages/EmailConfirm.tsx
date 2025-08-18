@@ -13,6 +13,7 @@ const EmailConfirm = () => {
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
+    // Always show confirmed state
     const handleEmailConfirmation = async () => {
       try {
         // Get the hash fragment from the URL

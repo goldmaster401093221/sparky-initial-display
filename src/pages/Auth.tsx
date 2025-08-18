@@ -48,6 +48,8 @@ const Auth = () => {
     keywords: [] as string[],
     researchRoles: [] as string[],
     specializationKeywords: [] as string[],
+    whatIHave: [] as string[],
+    whatINeed: [] as string[],
   });
 
   useEffect(() => {
@@ -127,13 +129,16 @@ const Auth = () => {
             institution: signupData.institution,
             college: signupData.college,
             department: signupData.department,
-            country_city: signupData.countryCity,
+            state_city: signupData.countryCity,
             postcode: signupData.postcode,
-            experience_years: signupData.experienceYears,
+            experience: signupData.experienceYears,
             primary_research_area: signupData.primaryResearchArea,
             secondary_research_area: signupData.secondaryResearchArea,
+            keywords: signupData.keywords.join(','),
             specialization_keywords: signupData.specializationKeywords.join(','),
             research_roles: signupData.researchRoles.join(','),
+            what_i_have: signupData.whatIHave.join(','),
+            what_i_need: signupData.whatINeed.join(','),
           }
         }
       });
@@ -172,6 +177,8 @@ const Auth = () => {
         keywords: [],
         researchRoles: [],
         specializationKeywords: [],
+        whatIHave: [],
+        whatINeed: [],
       });
     } catch (error: any) {
       toast({
@@ -312,6 +319,8 @@ const Auth = () => {
                       keywords: signupData.keywords,
                       researchRoles: signupData.researchRoles,
                       specializationKeywords: signupData.specializationKeywords,
+                      whatIHave: signupData.whatIHave,
+                      whatINeed: signupData.whatINeed,
                     }}
                     onChange={handleSignupFieldChange}
                     onFinish={handleSignupFinish}
