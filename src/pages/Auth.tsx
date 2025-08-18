@@ -114,13 +114,12 @@ const Auth = () => {
         password: signupData.password,
         options: {
           emailRedirectTo: redirectUrl,
-            data: {
+          data: {
             first_name: signupData.firstName,
             last_name: signupData.lastName,
             gender: signupData.gender,
             highest_degree: signupData.highestDegree,
             username: `${signupData.firstName.toLowerCase()}${signupData.lastName.toLowerCase()}`,
-            orcid_number: signupData.orcidNumber,
             linkedin_url: signupData.linkedinUrl,
             phone: signupData.phone,
             researchgate_url: signupData.researchgateUrl,
