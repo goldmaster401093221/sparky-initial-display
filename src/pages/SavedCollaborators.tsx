@@ -100,7 +100,7 @@ const SavedCollaborators = () => {
     const secondaryResearch = collaborator.secondary_research_area?.toLowerCase() || '';
     const keywords = collaborator.keywords?.join(' ').toLowerCase() || '';
     const specializationKeywords = collaborator.specialization_keywords?.join(' ').toLowerCase() || '';
-    const bio = collaborator.bio?.toLowerCase() || '';
+    const bio = collaborator.career_description?.toLowerCase() || '';
     
     return displayName.includes(searchLower) || 
            role.includes(searchLower) || 

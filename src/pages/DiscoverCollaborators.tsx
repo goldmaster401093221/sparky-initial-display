@@ -86,7 +86,7 @@ const DiscoverCollaborators = () => {
     const specializationKeywords = collaborator.specialization_keywords?.join(' ').toLowerCase() || '';
     const whatIHave = collaborator.what_i_have?.join(' ').toLowerCase() || '';
     const researchRole = collaborator.research_roles?.join(' ').toLowerCase() || '';
-    const bio = collaborator.bio?.toLowerCase() || '';
+    const bio = collaborator.career_description?.toLowerCase() || '';
     
     return displayName.includes(searchLower) || 
            role.includes(searchLower) || 
@@ -648,12 +648,12 @@ const DiscoverCollaborators = () => {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
+                    {/* <div>
                       <label className="text-sm font-medium text-gray-600">Country</label>
                       <p className="text-sm">{selectedProfile.country || 'Not provided'}</p>
-                    </div>
+                    </div> */}
                     <div>
-                      <label className="text-sm font-medium text-gray-600">City</label>
+                      <label className="text-sm font-medium text-gray-600">Country/City</label>
                       <p className="text-sm">{selectedProfile.state_city || 'Not provided'}</p>
                     </div>
                     <div>
