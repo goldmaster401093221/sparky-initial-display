@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Eye, EyeOff } from 'lucide-react';
 
 interface SignupStep1Props {
   formData: {
@@ -28,6 +29,8 @@ interface SignupStep1Props {
 }
 
 const SignupStep1: React.FC<SignupStep1Props> = ({ formData, onChange, onNext }) => {
+  const [showPassword, setShowPassword] = useState(false);
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onNext();
@@ -147,13 +150,26 @@ const SignupStep1: React.FC<SignupStep1Props> = ({ formData, onChange, onNext })
 
         <div className="space-y-2">
           <Label htmlFor="password">Password <span className="text-destructive">*</span></Label>
-          <Input
-            id="password"
-            type="password"
-            value={formData.password}
-            onChange={(e) => onChange('password', e.target.value)}
-            required
-          />
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              value={formData.password}
+              onChange={(e) => onChange('password', e.target.value)}
+              required
+            />
+            <button
+              type="button"
+              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4 text-gray-400" />
+              ) : (
+                <Eye className="h-4 w-4 text-gray-400" />
+              )}
+            </button>
+          </div>
         </div>
 
         <div className="space-y-2">
