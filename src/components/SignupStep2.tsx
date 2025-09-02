@@ -47,7 +47,7 @@ const SignupStep2: React.FC<SignupStep2Props> = ({ formData, onChange, onNext, o
                 type="text"
                 value={formData.institution}
                 onChange={(e) => onChange('institution', e.target.value)}
-                required
+                required={!skipInstitution}
               />
             </div>
 
@@ -58,7 +58,7 @@ const SignupStep2: React.FC<SignupStep2Props> = ({ formData, onChange, onNext, o
                 type="text"
                 value={formData.college}
                 onChange={(e) => onChange('college', e.target.value)}
-                required
+                required={!skipInstitution}
               />
             </div>
 
@@ -69,7 +69,7 @@ const SignupStep2: React.FC<SignupStep2Props> = ({ formData, onChange, onNext, o
                 type="text"
                 value={formData.department}
                 onChange={(e) => onChange('department', e.target.value)}
-                required
+                required={!skipInstitution}
               />
             </div>
           </>

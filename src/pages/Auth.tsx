@@ -39,6 +39,7 @@ const Auth = () => {
     careerDescription: '',
     isIndependentResearcher: false,
     isRetiredResearcher: false,
+    researchStatus: 'affiliated',
     // Step 2 - Institution Information
     institution: '',
     college: '',
@@ -174,6 +175,7 @@ const Auth = () => {
         careerDescription: '',
         isIndependentResearcher: false,
         isRetiredResearcher: false,
+        researchStatus: 'affiliated',
         institution: '',
         college: '',
         department: '',
@@ -313,6 +315,7 @@ const Auth = () => {
                       careerDescription: signupData.careerDescription,
                       isIndependentResearcher: signupData.isIndependentResearcher,
                       isRetiredResearcher: signupData.isRetiredResearcher,
+                      researchStatus: signupData.researchStatus,
                     }}
                     onChange={handleSignupFieldChange}
                     onNext={() => setCurrentStep(2)}
