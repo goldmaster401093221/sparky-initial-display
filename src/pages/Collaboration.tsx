@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
+import { usePendingRequests } from '@/hooks/usePendingRequests';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -39,12 +40,21 @@ import { format } from 'date-fns';
 const Collaboration = () => {
   const navigate = useNavigate();
   const { user, profile, loading: profileLoading, getDisplayName, getInitials } = useProfile();
+  const { pendingCount } = usePendingRequests();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('In Progress');
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [showEndCollaborationModal, setShowEndCollaborationModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [endingCollabId, setEndingCollabId] = useState<string | null>(null);
+  
+  // Accept/Reject request states
+  const [acceptRejectModalOpen, setAcceptRejectModalOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+  const [acceptRejectAction, setAcceptRejectAction] = useState<'accept' | 'reject' | null>(null);
+  const [acceptRejectTermsAccepted, setAcceptRejectTermsAccepted] = useState(false);
+  const [showAcceptRejectAgreementModal, setShowAcceptRejectAgreementModal] = useState(false);
+  const [showAcceptRejectConfirmModal, setShowAcceptRejectConfirmModal] = useState(false);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -163,6 +173,11 @@ const Collaboration = () => {
   const [requesterProfiles, setRequesterProfiles] = useState<Record<string, any>>({});
   const [loadingRequests, setLoadingRequests] = useState(false);
 
+  // My sent requests
+  const [myRequests, setMyRequests] = useState<any[]>([]);
+  const [myRequestsProfiles, setMyRequestsProfiles] = useState<Record<string, any>>({});
+  const [loadingMyRequests, setLoadingMyRequests] = useState(false);
+
   // In-progress and history collaborations
   const [inProgress, setInProgress] = useState<any[]>([]);
   const [historyItems, setHistoryItems] = useState<any[]>([]);
@@ -211,6 +226,38 @@ const Collaboration = () => {
       setRequesterProfiles({});
     }
     setLoadingRequests(false);
+  };
+
+  const fetchMyRequests = async () => {
+    if (!user) return;
+    setLoadingMyRequests(true);
+    const { data, error } = await supabase
+      .from('collaborations')
+      .select('*')
+      .eq('requester_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching my requests', error);
+      setLoadingMyRequests(false);
+      return;
+    }
+
+    const list = (data || []) as any[];
+    setMyRequests(list);
+    const collaboratorIds = Array.from(new Set(list.map((r: any) => r.collaborator_id)));
+    if (collaboratorIds.length) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', collaboratorIds);
+      const map: Record<string, any> = {};
+      (profiles || []).forEach((p: any) => { map[p.id] = p; });
+      setMyRequestsProfiles(map);
+    } else {
+      setMyRequestsProfiles({});
+    }
+    setLoadingMyRequests(false);
   };
 
   const fetchInProgress = async () => {
@@ -319,18 +366,66 @@ const Collaboration = () => {
   };
 
   const handleAccept = async (req: any) => {
-    const { error } = await supabase
-      .from('collaborations')
-      .update({ status: 'collaborated' })
-      .eq('id', req.id);
-    if (error) {
-      console.error('Accept error', error);
-      toast({ title: 'Failed to accept', description: error.message, variant: 'destructive' });
+    setSelectedRequest(req);
+    setAcceptRejectAction('accept');
+    setAcceptRejectModalOpen(true);
+    setAcceptRejectTermsAccepted(false);
+  };
+
+  const handleReject = async (req: any) => {
+    setSelectedRequest(req);
+    setAcceptRejectAction('reject');
+    setAcceptRejectModalOpen(true);
+    setAcceptRejectTermsAccepted(false);
+  };
+
+  const handleAcceptRejectRequest = async () => {
+    if (!acceptRejectTermsAccepted) {
+      setShowAcceptRejectConfirmModal(true);
       return;
     }
-    toast({ title: 'Request accepted' });
+    
+    // Show agreement modal if terms are accepted
+    setShowAcceptRejectAgreementModal(true);
+  };
+
+  const handleConfirmAcceptRejectAgreement = async () => {
+    setShowAcceptRejectAgreementModal(false);
+    
+    if (!selectedRequest || !acceptRejectAction) return;
+
+    const newStatus = acceptRejectAction === 'accept' ? 'collaborated' : 'declined';
+    
+    const { error } = await supabase
+      .from('collaborations')
+      .update({ status: newStatus })
+      .eq('id', selectedRequest.id);
+    
+    if (error) {
+      console.error(`${acceptRejectAction} error`, error);
+      toast({ title: `Failed to ${acceptRejectAction}`, description: error.message, variant: 'destructive' });
+      return;
+    }
+    
+    toast({ title: `Request ${acceptRejectAction}ed` });
+    setAcceptRejectModalOpen(false);
+    setSelectedRequest(null);
+    setAcceptRejectAction(null);
+    setAcceptRejectTermsAccepted(false);
+    
     fetchRequests();
-    fetchInProgress();
+    fetchMyRequests();
+    if (acceptRejectAction === 'accept') {
+      fetchInProgress();
+    }
+  };
+
+  const handleDeclineAcceptRejectAgreement = () => {
+    setShowAcceptRejectAgreementModal(false);
+  };
+
+  const handleBackToAcceptRejectTerms = () => {
+    setShowAcceptRejectConfirmModal(false);
   };
 
   // Build today's activity feed per collaboration
@@ -462,22 +557,9 @@ const Collaboration = () => {
     setLoadingActivities(false);
   };
 
-  const handleReject = async (req: any) => {
-    const { error } = await supabase
-      .from('collaborations')
-      .update({ status: 'declined' })
-      .eq('id', req.id);
-    if (error) {
-      console.error('Reject error', error);
-      toast({ title: 'Failed to reject', description: error.message, variant: 'destructive' });
-      return;
-    }
-    toast({ title: 'Request rejected' });
-    fetchRequests();
-  };
-
   useEffect(() => {
     fetchRequests();
+    fetchMyRequests();
     fetchInProgress();
     fetchHistory();
     fetchUpcoming();
@@ -788,6 +870,117 @@ const Collaboration = () => {
       );
     }
 
+    if (activeTab === 'My Requests') {
+      return (
+        <div className="grid grid-cols-6 gap-4">
+          {/* Main Collaboration Content */}
+          <div className="col-span-4">
+            {loadingMyRequests ? (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-sm text-gray-500">Loading my requests...</div>
+                </CardContent>
+              </Card>
+            ) : myRequests.length === 0 ? (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-sm text-gray-500">No requests sent by you.</div>
+                </CardContent>
+              </Card>
+            ) : (
+              myRequests.map((req: any) => {
+                const collaborator = myRequestsProfiles[req.collaborator_id];
+                
+                // Get status badge color based on request status
+                const getStatusBadge = (status: string) => {
+                  switch (status) {
+                    case 'contacted':
+                      return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 px-3 py-1">Pending</Badge>;
+                    case 'collaborated':
+                      return <Badge className="bg-green-100 text-green-800 border-green-200 px-3 py-1">Accepted</Badge>;
+                    case 'declined':
+                      return <Badge className="bg-red-100 text-red-800 border-red-200 px-3 py-1">Rejected</Badge>;
+                    case 'ended':
+                      return <Badge className="bg-gray-100 text-gray-800 border-gray-200 px-3 py-1">Ended</Badge>;
+                    case 'completed':
+                      return <Badge className="bg-blue-100 text-blue-800 border-blue-200 px-3 py-1">Completed</Badge>;
+                    default:
+                      return <Badge className="bg-gray-100 text-gray-800 border-gray-200 px-3 py-1">{status}</Badge>;
+                  }
+                };
+
+                return (
+                  <Card key={req.id} className="mb-4">
+                    <CardContent className="p-6">
+                      <div className="mb-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-semibold">Collaboration Status</h3>
+                          {getStatusBadge(req.status)}
+                        </div>
+                        <div className="flex items-center space-x-4 text-sm text-gray-600 mb-6">
+                          <span>From {req.start_date || '-'}</span>
+                          <span>To {req.end_date || '-'}</span>
+                          <span>Sent on {new Date(req.created_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+
+                      <div className="mb-6">
+                        <h4 className="font-medium mb-4">Collaborator</h4>
+                        <div className="flex items-start space-x-3 mb-6">
+                          <Avatar className="w-12 h-12">
+                            {collaborator?.avatar_url ? (
+                              <AvatarImage src={collaborator.avatar_url} alt={collaborator?.first_name || 'Collaborator'} />
+                            ) : (
+                              <AvatarFallback className="bg-gray-800 text-white text-sm">
+                                {(collaborator?.first_name?.[0] || 'U') + (collaborator?.last_name?.[0] || '')}
+                              </AvatarFallback>
+                            )}
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="font-medium">{collaborator ? `${collaborator.first_name || ''} ${collaborator.last_name || ''}`.trim() || collaborator.email : 'Unknown user'}</div>
+                            <div className="text-sm text-gray-500">Researcher Role</div>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {collaborator?.research_roles && typeof collaborator.research_roles === 'string' ? 
+                                collaborator.research_roles.split(',').map((role: string, i: number) => (
+                                  <Badge key={i} variant="outline" className="text-xs">{role.trim()}</Badge>
+                                )) : 
+                                <Badge variant="outline" className="text-xs">Researcher</Badge>
+                              }
+                            </div>
+                          </div>
+                          <button className="text-blue-600 hover:bg-blue-50 p-2 rounded-full" onClick={() => navigate(`/chat?with=${req.collaborator_id}`)}>
+                            <MessageSquare className="w-5 h-5" />
+                          </button>
+                        </div>
+
+                        <div className="mb-6">
+                          <h4 className="font-medium mb-4">Terms of Collaboration</h4>
+                          <div className="space-y-3">
+                            {(req.terms || ['Term of collaboration']).map((t: string, i: number) => (
+                              <div key={i} className="flex items-center space-x-2">
+                                <Checkbox id={`term-${req.id}-${i}`} defaultChecked disabled />
+                                <label htmlFor={`term-${req.id}-${i}`} className="text-sm">{t}</label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {req.status === 'contacted' && (
+                          <div className="text-sm text-gray-600 bg-yellow-50 p-3 rounded-md">
+                            Waiting for collaborator to respond to your request.
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
+          </div>
+        </div>
+      );
+    }
+
     if (activeTab === 'In Progress') {
       return (
         <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
@@ -1077,7 +1270,7 @@ const Collaboration = () => {
             {collaborationItems.map((item, index) => (
               <div
                 key={index}
-                className={`flex items-center space-x-3 px-3 py-2 rounded-md cursor-pointer ${
+                className={`flex items-center justify-between px-3 py-2 rounded-md cursor-pointer ${
                   item.active 
                     ? 'bg-blue-600 text-white' 
                     : 'text-gray-700 hover:bg-gray-100'
@@ -1092,8 +1285,15 @@ const Collaboration = () => {
                   }
                 }}
               >
-                <item.icon className="w-5 h-5" />
-                <span className="text-sm">{item.label}</span>
+                <div className="flex items-center space-x-3">
+                  <item.icon className="w-5 h-5" />
+                  <span className="text-sm">{item.label}</span>
+                </div>
+                {item.label === 'Collaboration' && pendingCount > 0 && (
+                  <div className="flex items-center justify-center w-5 h-5 bg-red-500 text-white text-xs rounded-full">
+                    {pendingCount > 9 ? '9+' : pendingCount}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -1179,7 +1379,7 @@ const Collaboration = () => {
           {/* Filter Tabs */}
           <div className="mb-6">
             <div className="flex space-x-8 border-b border-gray-200">
-              {['In Progress', 'Upcoming', 'Requests', 'History'].map((tab) => (
+              {['In Progress', 'Upcoming', 'Requests', 'My Requests', 'History'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -1232,6 +1432,96 @@ const Collaboration = () => {
         onOpenChange={setShowFeedbackModal}
         onSubmit={handleFeedbackSubmit}
       />
+
+      {/* Accept/Reject Request Modal */}
+      <Dialog open={acceptRejectModalOpen} onOpenChange={setAcceptRejectModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">
+              {acceptRejectAction === 'accept' ? 'Accept' : 'Reject'} Collaboration Request
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            {selectedRequest && (
+              <div className="space-y-4">
+                <div className="text-sm text-gray-600">
+                  <p>You are about to <strong>{acceptRejectAction}</strong> a collaboration request from:</p>
+                  <p className="font-medium mt-1">
+                    {requesterProfiles[selectedRequest.requester_id] 
+                      ? `${requesterProfiles[selectedRequest.requester_id].first_name || ''} ${requesterProfiles[selectedRequest.requester_id].last_name || ''}`.trim() || requesterProfiles[selectedRequest.requester_id].email 
+                      : 'Unknown user'}
+                  </p>
+                </div>
+                
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="acceptRejectTermsAccepted" 
+                      checked={acceptRejectTermsAccepted} 
+                      onCheckedChange={(v) => setAcceptRejectTermsAccepted(!!v)} 
+                    />
+                    <label htmlFor="acceptRejectTermsAccepted" className="text-sm text-gray-700">
+                      I agree to the terms and conditions
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="flex space-x-2">
+            <Button variant="outline" onClick={() => setAcceptRejectModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              className={`${acceptRejectAction === 'accept' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'} text-white`}
+              onClick={handleAcceptRejectRequest}
+            >
+              {acceptRejectAction === 'accept' ? 'Accept' : 'Reject'} Request
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Accept/Reject Agreement Modal */}
+      <Dialog open={showAcceptRejectAgreementModal} onOpenChange={setShowAcceptRejectAgreementModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Terms of Collaboration</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-gray-700 leading-relaxed">
+              I agree to work in good faith, sharing expertise and responsibilities to achieve the objectives of the collaboration. I commit to maintaining integrity, transparency, and confidentiality where required. I adhere to general ethical standards of collaboration and make fair contributions to the collaborative projects. In case of disagreements, issues should be resolved through open, civilized and trustful dialogue.
+            </p>
+          </div>
+          <DialogFooter className="flex space-x-2">
+            <Button variant="outline" onClick={handleDeclineAcceptRejectAgreement}>
+              No, Thanks.
+            </Button>
+            <Button onClick={handleConfirmAcceptRejectAgreement}>
+              Yes, I agree.
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Accept/Reject Confirm Terms Modal */}
+      <Dialog open={showAcceptRejectConfirmModal} onOpenChange={setShowAcceptRejectConfirmModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Terms Required</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-gray-700">
+              Please confirm the term of collaboration.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleBackToAcceptRejectTerms}>
+              Back
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
