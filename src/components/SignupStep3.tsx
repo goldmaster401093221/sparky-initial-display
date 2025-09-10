@@ -20,11 +20,11 @@ interface SignupStep3Props {
   };
   onChange: (field: string, value: string | string[]) => void;
   onFinish: () => void;
-  onCancel: () => void;
+  onBack: () => void;
   loading?: boolean;
 }
 
-const SignupStep3: React.FC<SignupStep3Props> = ({ formData, onChange, onFinish, onCancel, loading }) => {
+const SignupStep3: React.FC<SignupStep3Props> = ({ formData, onChange, onFinish, onBack, loading }) => {
   const [selectedKeyword, setSelectedKeyword] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
   const [selectedSpecialization, setSelectedSpecialization] = useState('');
@@ -438,9 +438,37 @@ const SignupStep3: React.FC<SignupStep3Props> = ({ formData, onChange, onFinish,
     }
   };
 
+  const isFormValid = () => {
+    const valid = (
+      formData.experienceYears.trim() !== '' &&
+      formData.primaryResearchArea.trim() !== '' &&
+      formData.secondaryResearchArea.trim() !== '' &&
+      formData.specializationKeywords.length > 0 &&
+      formData.researchRoles.length > 0 &&
+      formData.whatIHave.length > 0 &&
+      formData.whatINeed.length > 0
+    );
+    
+    // Debug logging
+    console.log('Form validation:', {
+      experienceYears: formData.experienceYears.trim() !== '',
+      primaryResearchArea: formData.primaryResearchArea.trim() !== '',
+      secondaryResearchArea: formData.secondaryResearchArea.trim() !== '',
+      specializationKeywords: formData.specializationKeywords.length > 0,
+      researchRoles: formData.researchRoles.length > 0,
+      whatIHave: formData.whatIHave.length > 0,
+      whatINeed: formData.whatINeed.length > 0,
+      overall: valid
+    });
+    
+    return valid;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onFinish();
+    if (isFormValid()) {
+      onFinish();
+    }
   };
 
   return (
@@ -538,7 +566,7 @@ const SignupStep3: React.FC<SignupStep3Props> = ({ formData, onChange, onFinish,
         </div>
 
         <div className="space-y-2">
-          <Label>Specialization/Keywords <span className="text-muted-foreground text-sm">(Optional)</span></Label>
+          <Label>Specialization/Keywords <span className="text-destructive">*</span></Label>
           <div className="flex gap-2">
             {showCustomSpecialization ? (
               <Input
@@ -602,7 +630,7 @@ const SignupStep3: React.FC<SignupStep3Props> = ({ formData, onChange, onFinish,
         </div>
 
         <div className="space-y-2">
-          <Label>Research Role <span className="text-muted-foreground text-sm">(Optional)</span></Label>
+          <Label>Research Role <span className="text-destructive">*</span></Label>
           <div className="flex gap-2">
             <Select value={selectedRole} onValueChange={setSelectedRole}>
               <SelectTrigger className="flex-1">
@@ -638,7 +666,7 @@ const SignupStep3: React.FC<SignupStep3Props> = ({ formData, onChange, onFinish,
         </div>
 
         <div className="space-y-2">
-          <Label>What I Have <span className="text-muted-foreground text-sm">(Optional)</span></Label>
+          <Label>What I Have <span className="text-destructive">*</span></Label>
           <div className="flex gap-2">
             {showCustomWhatIHave ? (
               <Input
@@ -702,7 +730,7 @@ const SignupStep3: React.FC<SignupStep3Props> = ({ formData, onChange, onFinish,
         </div>
 
         <div className="space-y-2">
-          <Label>What I Need <span className="text-muted-foreground text-sm">(Optional)</span></Label>
+          <Label>What I Need <span className="text-destructive">*</span></Label>
           <div className="flex gap-2">
             {showCustomWhatINeed ? (
               <Input
@@ -766,10 +794,10 @@ const SignupStep3: React.FC<SignupStep3Props> = ({ formData, onChange, onFinish,
         </div>
 
         <div className="flex gap-4">
-          <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
-            Cancel
+          <Button type="button" variant="outline" onClick={onBack} className="flex-1">
+            Back
           </Button>
-          <Button type="submit" className="flex-1" disabled={loading}>
+          <Button type="submit" className="flex-1" disabled={loading || !isFormValid()}>
             {loading ? 'Creating Account...' : 'Finish'}
           </Button>
         </div>

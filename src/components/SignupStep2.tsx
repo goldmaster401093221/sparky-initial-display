@@ -15,11 +15,11 @@ interface SignupStep2Props {
   };
   onChange: (field: string, value: string) => void;
   onNext: () => void;
-  onCancel: () => void;
+  onBack: () => void;
   skipInstitution?: boolean;
 }
 
-const SignupStep2: React.FC<SignupStep2Props> = ({ formData, onChange, onNext, onCancel, skipInstitution = false }) => {
+const SignupStep2: React.FC<SignupStep2Props> = ({ formData, onChange, onNext, onBack, skipInstitution = false }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onNext();
@@ -108,8 +108,8 @@ const SignupStep2: React.FC<SignupStep2Props> = ({ formData, onChange, onNext, o
         </div>
 
         <div className="flex gap-4">
-          <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
-            Cancel
+          <Button type="button" variant="outline" onClick={onBack} className="flex-1">
+            Back
           </Button>
           <Button type="submit" className="flex-1">
             Next
